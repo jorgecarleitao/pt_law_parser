@@ -1,0 +1,8 @@
+language: python
+python:
+  - "2.7"
+install:
+  - pip install pycrypto
+  - pip install git+https://github.com/jorgecarleitao/pdfminer.git@main
+script:
+  - python -m unittest discover tests
