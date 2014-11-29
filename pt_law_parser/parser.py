@@ -1,7 +1,7 @@
 # coding=utf-8
 from collections import defaultdict
 
-from pdfminer.layout import LTContainer, LTTextGroup, LAParams
+from pdfminer.layout import LTContainer, LTTextGroup, LAParams, LTLine, LTRect
 from pdfminer.converter import PDFLayoutAnalyzer
 from pdfminer.utils import apply_matrix_pt
 
@@ -43,7 +43,6 @@ class LawConverter(PDFLayoutAnalyzer):
         PDFLayoutAnalyzer.__init__(self, rsrcmgr, pageno=pageno, laparams=laparams)
 
         # attributes result of the parsing
-        self.result = ''
         self.meta = Meta()
         self._titles = []
 
@@ -55,7 +54,7 @@ class LawConverter(PDFLayoutAnalyzer):
         self._networks_layouts = []
         self._network = LTNetwork()  # network of all links and nodes of tables.
 
-        #
+        # state of the device across pages
         self.previous_line = None
         self._is_citing = False
 
@@ -67,8 +66,21 @@ class LawConverter(PDFLayoutAnalyzer):
     def tables(self):
         return self._tables
 
-    def write(self, text):
-        self.result += text
+    def as_html(self):
+
+        meta = u'<meta http-equiv="Content-Type" ' \
+               u'content="text/html; ' \
+               u'charset=UTF-8">'
+        head = u'<head>\n{meta}\n</head>\n'.format(meta=meta)
+
+        body = u''.join(u'%s\n' % line.as_html() for line in self._result_lines)
+
+        return u'<html>\n{head}<body>\n{body}</body>\n</html>\n'.format(
+            header=u'<html>\n<head>\n', head=head, body=body)
+
+    @property
+    def result(self):
+        return self._result_lines
 
     @property
     def center_offset(self):
@@ -112,10 +124,6 @@ class LawConverter(PDFLayoutAnalyzer):
     def write_table(self, table):
         if table not in self._result_lines:
             self._result_lines.append(table)
-
-    def write_lines(self):
-        for line in self._result_lines:
-            self.write('%s\n' % line.as_html())
 
     def add_paragraph(self, line):
         self._result_lines.append(Line(line.get_text()))
@@ -337,19 +345,15 @@ class LawConverter(PDFLayoutAnalyzer):
         for network in self._networks_layouts:
             self._tables.append(Table(network))
 
-        def render(item):
-            if isinstance(item, LTNetwork):
-                pass
-            elif isinstance(item, LTTextHeader):
-                self.meta.parse_header(item)
-            elif isinstance(item, LTTextColumn):
-                self._parse_column(item)
-            else:
-                for child in item:
-                    render(child)
+        header = ltpage[0]
+        left_column = ltpage[1]
+        right_column = ltpage[2]
 
-        render(ltpage)
+        self.meta.parse_header(header)
+        self._parse_column(left_column)
+        self._parse_column(right_column)
 
+        # if tables are in the end of the page, write them now.
         for table in self._tables:
             self.write_table(table)
 
