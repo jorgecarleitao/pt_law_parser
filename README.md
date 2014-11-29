@@ -44,10 +44,19 @@ The package contains a test suite that you can run with
 
 ## Contributions and issues
 
-If you find a problem or bug, please file an
-[issue](https://github.com/jorgecarleitao/pt_law_parser/issues).
+This package is always looking for help. An easy way for you to help us is to test
+the package against a PDF, and file an issue ([here](https://github.com/jorgecarleitao/pt_law_parser/issues))
+when it does not parse it correctly.
 
-If you have a specific PDF that is not parsing correctly, please refer to it in
-the issue so we can reproduce the error.
+Don't forget to add the following to the issue: 
 
-If you want to contribute to the package, you can submit a pull request.
+1. a link to the PDF in the [DRE.pt website](https://dre.pt/).
+2. which page the parsing is failing
+3. what it should appear, and what it appears.
+
+Example: On this PDF (link), page 2, where there is the paragraph "Olá mundo",
+the parser interprets it as "Olámundo".
+
+In case you want to contribute with code, the easiest way is to pick an issue
+and fix it. The pull request must contain a test case with the PDF parsed and
+previously failing, and must pass all tests.
