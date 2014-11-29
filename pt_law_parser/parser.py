@@ -507,15 +507,34 @@ class LAOrganizer(LAParams):
 
         return lines
 
-    def group_textlines(self, bbox, lines):
+    @staticmethod
+    def _last_page_limit(items):
+        """
+        Returns the y of the line that ends the last page.
+        """
+        items = [item for item in items if isinstance(item, LTLine)]
+        items.sort(key=lambda item: item.y0)
+
+        if len(items) >= 2 and LawConverter.is_page_centered(items[1]):
+            return items[1].y0
+        else:
+            return 0
+
+    def group_textlines(self, bbox, lines, other_objs):
         header = LTTextHeader()
         left_column = LTTextColumn()
         right_column = LTTextColumn()
 
         lines = self._organize_header(header, lines)
 
+        last_page_limit = self._last_page_limit(other_objs)
+
         for line in lines:
             assert(line.y0 < HEADER_MIN_Y)  # assert it is not on the header
+
+            # ignores lines below the end
+            if line.y0 <= last_page_limit:
+                continue
 
             if line.x0 < MIDDLE_X1:
                 left_column.add(line)
@@ -524,6 +543,6 @@ class LAOrganizer(LAParams):
 
         return [header, left_column, right_column]
 
-    def group_textboxes(self, bbox, boxes):
+    def group_textboxes(self, bbox, boxes, other_objs):
         group = LTTextGroup(boxes)
         return [group]
