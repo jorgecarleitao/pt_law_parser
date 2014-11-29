@@ -95,9 +95,9 @@ class Test0045800458(TestDocument):
         self.assertEqual(18, len(self.device.titles))
 
 
-class Test00100(TestDocument):
+class Test130252(TestDocument):
     def test_page_2(self):
-        file_name = 'tests/samples/00100.pdf'
+        file_name = 'tests/samples/130252.pdf'
         self._run_test(file_name, [1])
 
         self.assertEqual(self.device.result.split('\n'),
@@ -109,7 +109,7 @@ class Test00100(TestDocument):
         """
         Big tables and centered titles
         """
-        file_name = 'tests/samples/00100.pdf'
+        file_name = 'tests/samples/130252.pdf'
         self._run_test(file_name, [2])
 
         self.assertEqual(self.device.result.split('\n'),
