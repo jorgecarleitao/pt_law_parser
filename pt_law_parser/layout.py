@@ -1,7 +1,6 @@
 from math import ceil
 
-from pdfminer.layout import LAParams, LTContainer, LTTextBox,\
-    LTTextGroup, LTComponent, LTItem
+from pdfminer.layout import LTTextBox, LTItem
 
 
 class LTTextColumn(LTTextBox):
