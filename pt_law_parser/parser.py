@@ -316,7 +316,59 @@ class LawConverter(PDFLayoutAnalyzer):
         assert(sum(len(table) for table in self._networks_layouts) ==
                len(self._network.points))
 
+    @staticmethod
+    def _is_summary_page(items):
+        if len(items) <= 3:
+            return False
+        items = list(reversed(items[3:]))
+
+        # the summary pages have a rectangle and a line
+        line1 = None
+        line2 = None
+        rect = None
+
+        if isinstance(items[0], LTRect):
+            rect = items[0]
+        elif isinstance(items[0], LTLine):
+            line1 = items[0]
+            if isinstance(items[1], LTLine):
+                line2 = items[1]
+                rect = items[2]
+            else:
+                rect = items[1]
+
+        if rect is None or line1 is None:
+            return False
+        # from here on, we are in summary page.
+        # let's just make sure:
+
+        assert(eq(rect.x1, line1.x0, 1))
+        if line2 is not None:
+            assert(eq(rect.x1, line2.x0, 1))
+
+        # set line1 to be always above line2
+        if line2 and line2.y0 > line1.y0:
+            line1, line2 = line2, line1
+
+        # if the line1 is up, it is the first page of the summary pages
+        if eq(rect.y1, line1.y0, 1):
+            # first page summary
+            if line2 and eq(rect.y0, line2.y0, 1):
+                # one page summary
+                pass
+        # if the line1 is down, it is the last page of the summary pages
+        if eq(rect.y0, line1.y0, 1):
+            # last page summary
+            pass
+        return True
+
     def receive_layout(self, ltpage):
+
+        # checks if we are in a summary page
+        items = [item for item in ltpage if not isinstance(item, LTNetwork)]
+        if self._is_summary_page(items):
+            return
+
         self._tables = []
         self._networks_layouts = []
         self._network = LTNetwork()
@@ -381,22 +433,22 @@ class LawConverter(PDFLayoutAnalyzer):
     def is_end_cite(line):
         return line[-1].get_text() == u'»'
 
-    def paint_path(self, gstate, stroke, fill, evenodd, path):
-        """
-        Creates a LTNetwork out of the different drawing elements.
-        """
+    def _paint_network(self, path):
         network = LTNetwork()
 
-        # ignore lines above header
-        if path[0][0] in 'lm' and path[0][2] > HEADER_MIN_Y - 5:
-            return
-
         previous_element = None
-        for state, x, y in path:
-            element = (x, y)
-            element = apply_matrix_pt(self.ctm, element)
-            element = _ceil(element[0]), _ceil(element[1])
-            element = Point(element)
+        for tuple in path:
+            if len(tuple) == 3:
+                state, x, y = tuple
+                element = (x, y)
+                element = apply_matrix_pt(self.ctm, element)
+                element = _ceil(element[0]), _ceil(element[1])
+                element = Point(element)
+            elif len(tuple) == 1 and tuple[0] == 'h':
+                element = previous_element
+                state = 'l'
+            else:
+                raise IndexError
 
             network.add(element)
 
@@ -406,8 +458,40 @@ class LawConverter(PDFLayoutAnalyzer):
                 network.add_link(element, previous_element)
 
             previous_element = element
-
         self.cur_item.add(network)
+
+    def paint_path(self, gstate, stroke, fill, evenodd, path):
+        """
+        Creates a LTNetwork out of the different drawing elements.
+        """
+
+        # ignore lines above header
+        if path[0][0] in 'lm' and path[0][2] > HEADER_MIN_Y - 5:
+            return
+
+        path_string = ''.join(x[0] for x in path)
+
+        # ignore curves
+        if 'c' in path_string:
+            return
+
+        # a rectangle or a line, parse it.
+        if path_string in ('mlllh', 'ml'):
+            return PDFLayoutAnalyzer.paint_path(self, gstate, stroke, fill,
+                                                evenodd, path)
+        # this situation may occur on the first page of the PDF; we thus
+        # set it here explicitly.
+        elif path_string == 'mlml':
+            PDFLayoutAnalyzer.paint_path(self, gstate, stroke, fill,
+                                         evenodd, path[:2])
+            PDFLayoutAnalyzer.paint_path(self, gstate, stroke, fill,
+                                         evenodd, path[2:])
+
+        # ignore (non-rectangle) filled stuff
+        if fill:
+            return
+
+        self._paint_network(path)
 
 
 class LAOrganizer(LAParams):
