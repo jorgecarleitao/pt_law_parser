@@ -3,6 +3,8 @@ from collections import defaultdict
 
 from pdfminer.layout import LTComponent
 
+from pt_law_parser.auxiliar import eq, middle_x
+
 
 class Line(object):
 
@@ -52,6 +54,14 @@ class Table(LTComponent):
             self.colspan = 0
             self.rowspan = 0
 
+            self._lines = []
+            self._min_x = 0
+            self._min_y = 0
+
+        @property
+        def lines(self):
+            return self._lines
+
         def add(self, row, column):
             if self.row is None:
                 self.row = row
@@ -61,6 +71,33 @@ class Table(LTComponent):
                     self.colspan += 1
                 if self.column == column:
                     self.rowspan += 1
+
+        def add_line(self, item, bbox):
+            """
+            Adds a line to the cell assuming a bounding box bbox.
+            """
+            # todo: this code is similar to _parse_line. Common implementation?
+            line = Line(item.get_text().replace(' .', ''))
+
+            if not self._lines:
+                # cell is empty
+                self._lines.append(line)
+                self._min_x = item.x0
+            else:
+                middle_x_cell = middle_x(bbox)
+                middle_x_line = middle_x(item.bbox)
+                is_centered = eq(middle_x_cell, middle_x_line, 1)
+
+                if is_centered:
+                    if self._min_y - item.y1 < 0:
+                        self._lines[-1].merge(line)
+                    else:
+                        self._lines.append(line)
+                elif eq(self._min_x, item.x0, 1):
+                    self._lines.append(line)
+                else:
+                    self._lines[-1].merge(line)
+            self._min_y = item.y0
 
     def __init__(self, network):
         # construct rows and columns borders by distinct x and y's.
@@ -73,9 +110,6 @@ class Table(LTComponent):
         self._create_closing_links(network)
         self._cells = self._create_cells(network)
         self._elements = self._build_elements(self._cells)
-
-        # cell->item mapping
-        self._cells_to_items = {cell: [] for cell in self._cells}
 
         x0 = min(cell.x0 for cell in self._cells)
         x1 = max(cell.x1 for cell in self._cells)
@@ -249,18 +283,10 @@ class Table(LTComponent):
     def add(self, item):
         """
         Adds a text item to the table, inserting it into the correct cell.
-
-        It also sanitizes the text.
         """
-        # todo: define is_paragraph for this situation
-        for cell in self._cells:
-            if cell.is_hoverlap(item) and cell.is_voverlap(item):
-                line = Line(item.get_text().replace(' .', ''))
-
-                if not self._cells_to_items[cell]:
-                    self._cells_to_items[cell].append(line)
-                else:
-                    self._cells_to_items[cell][-1].merge(line)
+        for element in self._elements:
+            if element.cell.is_hoverlap(item) and element.cell.is_voverlap(item):
+                element.add_line(item, element.cell.bbox)
                 break
 
     def as_html(self):
@@ -272,7 +298,7 @@ class Table(LTComponent):
                 for element in self._elements:
                     if element.column == column and element.row == row:
 
-                        lines = self._cells_to_items[element.cell]
+                        lines = element.lines
                         colspan = element.colspan
                         rowspan = element.rowspan
 
