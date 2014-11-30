@@ -9,22 +9,11 @@ from pt_law_parser.layout import LTNetwork, LTTextHeader, LTTextColumn
 from pt_law_parser.point import Point
 from pt_law_parser.html import Line, Table
 from pt_law_parser.meta import Meta
+from pt_law_parser.auxiliar import eq, int_round, middle_x
 
 
 HEADER_MIN_Y = 775
 MIDDLE_X1 = (292 + 306.0)/2
-
-
-def _ceil(x, base=1):
-    return int(base * round(float(x)/base))
-
-
-def eq(value1, value2, epsilon):
-    return abs(value1 - value2) < epsilon
-
-
-def middle_x(bbox):
-    return (bbox[0] + bbox[2])/2.
 
 
 class LawConverter(PDFLayoutAnalyzer):
@@ -442,7 +431,7 @@ class LawConverter(PDFLayoutAnalyzer):
                 state, x, y = tuple
                 element = (x, y)
                 element = apply_matrix_pt(self.ctm, element)
-                element = _ceil(element[0]), _ceil(element[1])
+                element = int_round(element[0]), int_round(element[1])
                 element = Point(element)
             elif len(tuple) == 1 and tuple[0] == 'h':
                 element = previous_element
