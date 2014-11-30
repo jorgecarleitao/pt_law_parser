@@ -486,7 +486,8 @@ class LawConverter(PDFLayoutAnalyzer):
 class LAOrganizer(LAParams):
 
     def __init__(self):
-        LAParams.__init__(self, line_overlap=0, line_margin=0.1, boxes_flow=0,
+        # 0.25: relative overlap between lines
+        LAParams.__init__(self, line_overlap=0.25, line_margin=0.1, boxes_flow=0,
                           char_margin=2)
 
     @staticmethod
