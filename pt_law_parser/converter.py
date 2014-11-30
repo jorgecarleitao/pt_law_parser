@@ -123,6 +123,10 @@ class LawConverter(PDFLayoutAnalyzer):
     def _parse_line(self, line, column):
         # todo: parse italics inside sentences
 
+        # ignores empty lines, a by-product of the PDFMiner.
+        if line.get_text().replace(' ', '') == '':
+            return
+
         # check if text is inside table.
         for table in self._tables:
             if table.hoverlap(line) and table.voverlap(line):
@@ -505,7 +509,8 @@ class LAOrganizer(LAParams):
         items = [item for item in items if isinstance(item, LTLine)]
         items.sort(key=lambda item: item.y0)
 
-        if len(items) >= 2 and LawConverter.is_page_centered(items[1]):
+        if len(items) >= 2 and LawConverter.is_page_centered(items[1]) and \
+                items[0].x0 > MIDDLE_X1:
             return items[1].y0
         else:
             return 0
