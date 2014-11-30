@@ -3,7 +3,7 @@ import unittest
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage
 
-from pt_law_parser.parser import LAOrganizer, LawConverter
+from pt_law_parser.converter import LAOrganizer, LawConverter
 
 
 class TestDocument(unittest.TestCase):
