@@ -99,6 +99,14 @@ class Table(LTComponent):
                     self._lines[-1].merge(line)
             self._min_y = item.y0
 
+    class EmptyTableError(Exception):
+        """
+        Raised by constructor when construction fails because table has no
+        cells. This means that the constructed network does not constitute a
+        table and should be ignored.
+        """
+        pass
+
     def __init__(self, network):
         # construct rows and columns borders by distinct x and y's.
         self._rows_borders = sorted(list(
@@ -111,6 +119,8 @@ class Table(LTComponent):
         self._cells = self._create_cells(network)
         self._elements = self._build_elements(self._cells)
 
+        if not self._cells:
+            raise self.EmptyTableError
         x0 = min(cell.x0 for cell in self._cells)
         x1 = max(cell.x1 for cell in self._cells)
         y0 = min(cell.y0 for cell in self._cells)

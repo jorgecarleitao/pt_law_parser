@@ -389,7 +389,11 @@ class LawConverter(PDFLayoutAnalyzer):
 
         # creates components with tables.
         for network in self._networks_layouts:
-            self._tables.append(Table(network))
+            try:
+                table = Table(network)
+                self._tables.append(table)
+            except Table.EmptyTableError:
+                pass
 
         header = ltpage[0]
         left_column = ltpage[1]
@@ -469,10 +473,14 @@ class LawConverter(PDFLayoutAnalyzer):
         if 'c' in path_string:
             return
 
-        # a rectangle or a line, parse it.
-        if path_string in ('mlllh', 'ml'):
+        # a rectangle is never part of a table, parse it as other.
+        if path_string == 'mlllh':
             return PDFLayoutAnalyzer.paint_path(self, gstate, stroke, fill,
                                                 evenodd, path)
+        # a line is parsed both as a line and as part of a network.
+        elif path_string == 'ml':
+            PDFLayoutAnalyzer.paint_path(self, gstate, stroke, fill,
+                                         evenodd, path)
         # this situation may occur on the first page of the PDF; we thus
         # set it here explicitly.
         elif path_string == 'mlml':
