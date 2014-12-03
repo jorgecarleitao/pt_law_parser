@@ -22,6 +22,8 @@ ROMAN_TO_NUMBER = {'I': 1,
 
 class Meta(object):
     def __init__(self):
+        # suplementary information has a page associated to it.
+        self._suplement_page = None
         self._pages = []
         self._series = 0
         self._number = 0
@@ -39,6 +41,13 @@ class Meta(object):
             assert(self._date == date)
 
     def add_page(self, page):
+        try:
+            page = int(page)
+        except ValueError:
+            numbers = page.split('-')
+            self._suplement_page = int(numbers[0])
+            page = int(numbers[1].strip()[1:-1])
+
         assert(isinstance(page, int))
         assert(page not in self._pages)
         if self._pages:
@@ -50,10 +59,10 @@ class Meta(object):
         Parses the header of documents posterior to ~2006.
         """
         if 'BoldMT' in header[0][0].fontname:
-            page_no = int(header[0].get_text())
+            page_no = header[0].get_text()
             document_identifier = header[1].get_text().strip()
         else:
-            page_no = int(header[1].get_text())
+            page_no = header[1].get_text()
             document_identifier = header[0].get_text().strip()
 
         self.add_page(page_no)
