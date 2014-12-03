@@ -157,8 +157,9 @@ class LawConverter(PDFLayoutAnalyzer):
             is_column_jump = self.previous_line.x1 < MIDDLE_X1 < line.x1
             is_page_jump = line.x1 < MIDDLE_X1 < self.previous_line.x1
 
-            if self.previous_line.y0 - line.y1 < 0 and not (is_column_jump or
-                                                            is_page_jump):
+            if self.is_title(self.previous_line, column) and \
+                    self.previous_line.y0 - line.y1 < 0 and not \
+                    (is_column_jump or is_page_jump):
                 self.merge(line)
             else:
                 self._titles.append(line)
