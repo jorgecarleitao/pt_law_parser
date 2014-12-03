@@ -22,11 +22,8 @@ class LawConverter(PDFLayoutAnalyzer):
     is able to parse a single page.
     """
 
-    PARAGRAPH_Y_SPACE = 2  # 2 chosen by trial. Notice that lines can overlap.
-    PARAGRAPH_SPACE = 11
-    CITING_SPACE = 11
-    EOF_EPSILON = 5  # by trial. Distance to max EOF position to considered a
-    #  new paragraph.
+    PARAGRAPH_SPACE = 11.34
+    CITING_SPACE = 11.34
 
     def __init__(self, rsrcmgr, pageno=1, laparams=None):
         PDFLayoutAnalyzer.__init__(self, rsrcmgr, pageno=pageno, laparams=laparams)
@@ -75,7 +72,7 @@ class LawConverter(PDFLayoutAnalyzer):
     def center_offset(self):
         if self.meta.version == 1:
             # titles are not exactly on columns center. Obtained by testing.
-            return 1.5
+            return 1.4
         elif self.meta.version == 2:
             return 0
 
@@ -96,14 +93,18 @@ class LawConverter(PDFLayoutAnalyzer):
     def is_page_centered(line):
         return line.x0 < MIDDLE_X1 < line.x1
 
-    def is_centered(self, line, column):
+    def is_column_centered(self, line, column):
         """
-        Checks if line is centered (i.e. a section title, etc.
+        Checks if line is centered (i.e. a section title, etc.)
         """
-        return eq(middle_x(column.bbox) - self.center_offset +
-                  self.citing_space/2.,
-                  middle_x(line.bbox), 0.4) and\
-            line.x0 - (column.x0 + self.citing_space) > 1 or\
+        return eq(middle_x(column.bbox) - self.center_offset + self.citing_space,
+                  middle_x(line.bbox), 2)
+
+    def is_title(self, line, column):
+        is_full_width = eq(line.width + self.citing_space, column.width, 3)
+
+        return self.is_column_centered(line, column) and \
+            not (is_full_width or self.is_paragraph(line, column)) or \
             'Bold' in line[0].fontname
 
     @property
@@ -135,40 +136,40 @@ class LawConverter(PDFLayoutAnalyzer):
             elif line.y0 < table.y0 and not table.voverlap(line):
                 self.write_table(table)
 
-        is_centered_title = self.is_centered(line, column)
-
-        is_paragraph_space = self.is_paragraph(line, column) or self.is_centered(
-            self.previous_line, column)
-
-        is_column_jump = self.previous_line.x1 < MIDDLE_X1 < line.x1
-        is_page_jump = line.x1 < MIDDLE_X1 < self.previous_line.x1
-
         if self.is_page_centered(line):
             self.add_paragraph(line)
             # is only a title if not a normal line in a full page
             # (which we test since the text belongs to the left column)
-            if not is_paragraph_space:
+            if not self.is_paragraph(line, column):
                 self._titles.append(line)
+
         elif line == self.previous_line:
             self.add_paragraph(line)
-            if is_centered_title:
+            if self.is_title(line, column):
                 self._titles.append(line)
+
         elif self.is_starting_cite(line):
             self.add_paragraph(line)
             # a start citing is always a title (and is not always centered.)
             self._titles.append(line)
-        elif is_centered_title:
+
+        elif self.is_title(line, column):
+            is_column_jump = self.previous_line.x1 < MIDDLE_X1 < line.x1
+            is_page_jump = line.x1 < MIDDLE_X1 < self.previous_line.x1
+
             if self.previous_line.y0 - line.y1 < 0 and not (is_column_jump or
                                                             is_page_jump):
                 self.merge(line)
             else:
                 self._titles.append(line)
                 self.add_paragraph(line)
-        elif not is_paragraph_space:
-            # merge lines
-            self.merge(line)
         else:
-            self.add_paragraph(line)
+            # is_text = not self.is_title(line, column)
+            if self.is_paragraph(line, column) or \
+                    self.is_title(self.previous_line, column):
+                self.add_paragraph(line)
+            else:
+                self.merge(line)
 
     def _sanitize_network(self):
         """

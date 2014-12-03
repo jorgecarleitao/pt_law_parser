@@ -116,10 +116,19 @@ class Test130252(TestDocument):
         file_name = 'tests/samples/130252.pdf'
         self._run_test(file_name, [3])
 
-        with open('s.html', 'w') as f:
-            f.write(self.device.as_html().encode('utf-8'))
-
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.4').split('\n'))
 
         self.assertEqual(4, len(self.device.titles))
+
+    def test_page_8(self):
+        file_name = 'tests/samples/130252.pdf'
+        self._run_test(file_name, [7])
+
+        with open('s.html', 'w') as f:
+            f.write(self.device.as_html().encode('utf-8'))
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.8').split('\n'))
+
+        self.assertEqual(14, len(self.device.titles))
