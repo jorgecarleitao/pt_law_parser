@@ -80,14 +80,36 @@ class LawConverter(PDFLayoutAnalyzer):
         """
         Checks if line is a new paragraph
         """
+        is_paragraph = eq(line.x0 - (column.x0 + self.citing_space),
+                          self.PARAGRAPH_SPACE, 1)
+
         if self.meta.version == 1:
-            return eq(line.x0 - (column.x0 + self.citing_space),
-                      self.PARAGRAPH_SPACE, 1)
+            return is_paragraph
         else:
-            return eq(line.x0 - (column.x0 + self.citing_space),
-                      self.PARAGRAPH_SPACE, 1) or \
-                eq(line.x0 - (column.x0 + self.citing_space),
-                      2*self.PARAGRAPH_SPACE - 1, 1)
+            is_sub_paragraph = eq(line.x0 - (column.x0 + self.citing_space),
+                                  2*self.PARAGRAPH_SPACE - 1, 1)
+
+            return is_paragraph or is_sub_paragraph
+
+    def _is_text(self, line, column):
+        """
+        Special conditions to exclude text that is similar to a title.
+        """
+        if self.meta.version == 1:
+            return False
+
+        previous_is_sub_paragraph = eq(self.previous_line.x0 -
+                                       (column.x0 + self.citing_space),
+                                       2*self.PARAGRAPH_SPACE - 1, 1)
+        previous_is_sub_line = eq(self.previous_line.x0 -
+                                  (column.x0 + self.citing_space),
+                                  3*self.PARAGRAPH_SPACE, 1)
+
+        is_sub_line = eq(line.x0 - (column.x0 + self.citing_space),
+                         3*self.PARAGRAPH_SPACE, 1)
+
+        return (previous_is_sub_paragraph or previous_is_sub_line) and \
+            is_sub_line
 
     @staticmethod
     def is_page_centered(line):
@@ -103,9 +125,9 @@ class LawConverter(PDFLayoutAnalyzer):
     def is_title(self, line, column):
         is_full_width = eq(line.width + self.citing_space, column.width, 3)
 
-        return self.is_column_centered(line, column) and \
-            not (is_full_width or self.is_paragraph(line, column)) or \
-            'Bold' in line[0].fontname
+        return (self.is_column_centered(line, column) and
+                not (is_full_width or self.is_paragraph(line, column)) and
+                not self._is_text(line, column)) or 'Bold' in line[0].fontname
 
     @property
     def citing_space(self):
