@@ -333,8 +333,13 @@ class LawConverter(PDFLayoutAnalyzer):
         assert(sum(len(table) for table in self._networks_layouts) ==
                len(self._network.points))
 
-    @staticmethod
-    def _is_summary_page(items):
+    def _is_summary_page(self, items):
+        # todo: this is too broad. Make it more restrict.
+        for rectangle in [item for item in items if isinstance(item, LTRect)]:
+            # if is centered but not on the bottom of the page.
+            if self.is_page_centered(rectangle) and not rectangle.y1 < 80:
+                return True
+
         if len(items) <= 3:
             return False
         items = list(reversed(items[3:]))
@@ -384,6 +389,10 @@ class LawConverter(PDFLayoutAnalyzer):
         # checks if we are in a summary page
         items = [item for item in ltpage if not isinstance(item, LTNetwork)]
         if self._is_summary_page(items):
+            return
+
+        # empty page
+        if len(ltpage) == 0:
             return
 
         self._tables = []

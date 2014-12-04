@@ -54,6 +54,12 @@ class Meta(object):
             assert(page == self._pages[-1] + 1)
         self._pages.append(page)
 
+    @staticmethod
+    def _build_date(piece):
+        piece = piece.split(' de ')
+        month = MONTH_NAME_TO_MONTH[piece[1].lower().strip()]
+        return datetime.date(int(piece[2]), month, int(piece[0]))
+
     def _parse_header_v1(self, header):
         """
         Parses the header of documents posterior to ~2006.
@@ -73,9 +79,7 @@ class Meta(object):
         # extract header info
         pieces[0] = int(pieces[0][:2])
         pieces[1] = int(pieces[1][5:-1])
-        pieces[2] = pieces[2].split(' de ')
-        month = MONTH_NAME_TO_MONTH[pieces[2][1].lower().strip()]
-        pieces[2] = datetime.date(int(pieces[2][2]), month, int(pieces[2][0]))
+        pieces[2] = self._build_date(pieces[2])
 
         self.set_header_info(series=pieces[0], number=pieces[1], date=pieces[2])
 
@@ -101,7 +105,11 @@ class Meta(object):
 
         pieces = number_and_date.split(u'—')
         number = int(pieces[0].strip().split(' ')[1])
-        date = datetime.datetime.strptime(pieces[1].strip(), '%d-%m-%Y').date
+        try:
+            date = datetime.datetime.strptime(pieces[1].strip(), '%d-%m-%Y').date
+        except ValueError:
+            # version that uses full date.
+            date = self._build_date(pieces[1])
 
         self.set_header_info(series, number, date)
 
@@ -116,3 +124,7 @@ class Meta(object):
     @property
     def version(self):
         return self._document_version
+
+    @property
+    def pages(self):
+        return self._pages
