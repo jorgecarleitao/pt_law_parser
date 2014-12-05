@@ -341,3 +341,15 @@ class Table(LTComponent):
                         string += '<td%s>%s</td>\n' % (attributes, text)
             string += '</tr>\n'
         return '<table>\n%s</table>' % string
+
+
+class BlockquoteStart(object):
+
+    def as_html(self):
+        return '<blockquote>'
+
+
+class BlockquoteEnd(object):
+
+    def as_html(self):
+        return '</blockquote>'

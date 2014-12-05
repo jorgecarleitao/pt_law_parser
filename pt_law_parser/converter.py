@@ -7,7 +7,7 @@ from pdfminer.utils import apply_matrix_pt
 
 from pt_law_parser.layout import LTNetwork, LTTextHeader, LTTextColumn
 from pt_law_parser.point import Point
-from pt_law_parser.html import Line, Header, Table
+from pt_law_parser.html import Line, Header, Table, BlockquoteEnd, BlockquoteStart
 from pt_law_parser.meta import Meta
 from pt_law_parser.auxiliar import eq, int_round, middle_x
 
@@ -454,10 +454,13 @@ class LawConverter(PDFLayoutAnalyzer):
 
             if self.is_starting_cite(line, column):
                 self._is_citing = True
+                self.add(BlockquoteStart())
 
             self._parse_line(line, column)
 
             if self.is_end_cite(line):
+                if self._is_citing:
+                    self.add(BlockquoteEnd())
                 self._is_citing = False
 
             self.previous_line = line
