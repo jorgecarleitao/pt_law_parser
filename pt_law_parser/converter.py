@@ -7,7 +7,7 @@ from pdfminer.utils import apply_matrix_pt
 
 from pt_law_parser.layout import LTNetwork, LTTextHeader, LTTextColumn
 from pt_law_parser.point import Point
-from pt_law_parser.html import Line, Table
+from pt_law_parser.html import Line, Header, Table
 from pt_law_parser.meta import Meta
 from pt_law_parser.auxiliar import eq, int_round, middle_x
 
@@ -137,6 +137,10 @@ class LawConverter(PDFLayoutAnalyzer):
         if table not in self._result_lines:
             self._result_lines.append(table)
 
+    def add_header(self, line):
+        self._result_lines.append(Header(line.get_text()))
+        self._titles.append(line)
+
     def add_paragraph(self, line):
         self._result_lines.append(Line(line.get_text()))
 
@@ -159,21 +163,20 @@ class LawConverter(PDFLayoutAnalyzer):
                 self.write_table(table)
 
         if self.is_page_centered(line):
-            self.add_paragraph(line)
             # is only a title if not a normal line in a full page
             # (which we test since the text belongs to the left column)
-            if not self.is_paragraph(line, column):
-                self._titles.append(line)
-
+            if self.is_paragraph(line, column):
+                self.add_paragraph(line)
+            else:
+                self.add_header(line)
         elif line == self.previous_line:
-            self.add_paragraph(line)
             if self.is_title(line, column):
-                self._titles.append(line)
-
+                self.add_header(line)
+            else:
+                self.add_paragraph(line)
         elif self.is_starting_cite(line):
-            self.add_paragraph(line)
             # a start citing is always a title (and is not always centered.)
-            self._titles.append(line)
+            self.add_header(line)
 
         elif self.is_title(line, column):
             is_column_jump = self.previous_line.x1 < MIDDLE_X1 < line.x1
@@ -184,8 +187,7 @@ class LawConverter(PDFLayoutAnalyzer):
                     (is_column_jump or is_page_jump):
                 self.merge(line)
             else:
-                self._titles.append(line)
-                self.add_paragraph(line)
+                self.add_header(line)
         else:
             # is_text = not self.is_title(line, column)
             if self.is_paragraph(line, column) or \

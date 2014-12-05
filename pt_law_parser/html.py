@@ -34,6 +34,12 @@ class Line(object):
         return '<p>%s</p>' % self.text
 
 
+class Header(Line):
+
+    def as_html(self):
+        return '<h1>%s</h1>' % self.text
+
+
 class Table(LTComponent):
     """
     A table performs 3 operations:
