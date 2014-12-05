@@ -136,16 +136,19 @@ class LawConverter(PDFLayoutAnalyzer):
     def citing_space(self):
         return self._is_citing*self.CITING_SPACE
 
-    def write_table(self, table):
-        if table not in self._result_lines:
-            self._result_lines.append(table)
+    def add(self, element):
+        self._result_lines.append(element)
 
     def add_header(self, line):
-        self._result_lines.append(Header(line.get_text()))
+        self.add(Header(line.get_text()))
         self._titles.append(line)
 
     def add_paragraph(self, line):
-        self._result_lines.append(Line(line.get_text()))
+        self.add(Line(line.get_text()))
+
+    def add_table(self, table):
+        if table not in self._result_lines:
+            self.add(table)
 
     def merge(self, line):
         self._result_lines[-1].merge(Line(line.get_text()))
@@ -163,7 +166,7 @@ class LawConverter(PDFLayoutAnalyzer):
                 table.add(line)
                 return
             elif line.y0 < table.y0 and not table.voverlap(line):
-                self.write_table(table)
+                self.add_table(table)
 
         if self.is_page_centered(line):
             # is only a title if not a normal line in a full page
@@ -442,7 +445,7 @@ class LawConverter(PDFLayoutAnalyzer):
 
         # if tables are in the end of the page, write them now.
         for table in self._tables:
-            self.write_table(table)
+            self.add_table(table)
 
     def _parse_column(self, column):
         for line in column:
