@@ -154,3 +154,19 @@ class Test131783(TestDocument):
                          self.get_expected(file_name+'.2').split('\n'))
 
         self.assertEqual(6, len(self.device.titles))
+
+
+class Test131288(TestDocument):
+
+    def test_page_6(self):
+        """
+        Contains a line starting with a start citing char, showing that
+        start citing must be done taking that into account.
+        """
+        file_name = 'tests/samples/131288.pdf'
+        self._run_test(file_name, [5])
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.6').split('\n'))
+
+        self.assertEqual(18, len(self.device.titles))

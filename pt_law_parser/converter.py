@@ -122,8 +122,11 @@ class LawConverter(PDFLayoutAnalyzer):
         return eq(middle_x(column.bbox) - self.center_offset + self.citing_space,
                   middle_x(line.bbox), 2)
 
+    def is_full_width(self, line, column):
+        return eq(line.width + self.citing_space, column.width, 3)
+
     def is_title(self, line, column):
-        is_full_width = eq(line.width + self.citing_space, column.width, 3)
+        is_full_width = self.is_full_width(line, column)
 
         return (self.is_column_centered(line, column) and
                 not (is_full_width or self.is_paragraph(line, column)) and
@@ -174,7 +177,7 @@ class LawConverter(PDFLayoutAnalyzer):
                 self.add_header(line)
             else:
                 self.add_paragraph(line)
-        elif self.is_starting_cite(line):
+        elif self.is_starting_cite(line, column):
             # a start citing is always a title (and is not always centered.)
             self.add_header(line)
 
@@ -446,7 +449,7 @@ class LawConverter(PDFLayoutAnalyzer):
             if self.previous_line is None:  # if first item
                 self.previous_line = line
 
-            if self.is_starting_cite(line):
+            if self.is_starting_cite(line, column):
                 self._is_citing = True
 
             self._parse_line(line, column)
@@ -456,10 +459,9 @@ class LawConverter(PDFLayoutAnalyzer):
 
             self.previous_line = line
 
-    @staticmethod
-    def is_starting_cite(line):
-        # todo: this may not be enough. The end could be in the next line.
-        return line[0].get_text() == u'«' and u'»' not in line.get_text()
+    def is_starting_cite(self, line, column):
+        return not self.is_full_width(line, column) and \
+            line[0].get_text() == u'«' and u'»' not in line.get_text()
 
     @staticmethod
     def is_end_cite(line):
