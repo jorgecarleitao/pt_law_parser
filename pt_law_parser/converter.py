@@ -165,7 +165,8 @@ class LawConverter(PDFLayoutAnalyzer):
             if table.hoverlap(line) and table.voverlap(line):
                 table.add(line)
                 return
-            elif line.y0 < table.y0 and not table.voverlap(line):
+            elif line.y0 < table.y0 and table.hoverlap(line) and \
+                    not table.voverlap(line):
                 self.add_table(table)
 
         if self.is_page_centered(line):

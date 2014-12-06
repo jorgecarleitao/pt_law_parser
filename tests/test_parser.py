@@ -14,3 +14,15 @@ class TestParser(TestDocument):
         device = parse_document('tests/samples/113604.pdf')
 
         self.assertEqual(4, len(device.meta.pages))
+
+    def test_131288(self):
+
+        device = parse_document('tests/samples/131288.pdf')
+
+        self.assertEqual(10, len(device.meta.pages))
+
+    def test_131371(self):
+
+        device = parse_document('tests/samples/131371.pdf')
+
+        self.assertEqual(4, len(device.meta.pages))
