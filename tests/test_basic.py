@@ -170,3 +170,26 @@ class Test131288(TestDocument):
                          self.get_expected(file_name+'.6').split('\n'))
 
         self.assertEqual(18, len(self.device.titles))
+
+
+class Test131371(TestDocument):
+
+    @unittest.expectedFailure
+    # This test fails because the table contains a list of numbers on the same
+    # cell but in different paragraphs. The list is centered, and is difficult to
+    # distinguish from a normal paragraph.
+    # todo: fix this by improving how the table interprets a new line.
+    def test_page_4(self):
+        """
+        Contains a table on the right column.
+
+        Also, the table contains centered paragraphs difficult to identify.
+        """
+        file_name = 'tests/samples/131371.pdf'
+        self._run_test(file_name, [3])
+
+        with open('s.html', 'w') as f:
+            f.write(self.device.as_html().encode('utf-8'))
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.4').split('\n'))
