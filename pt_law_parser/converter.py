@@ -1,13 +1,15 @@
 # coding=utf-8
 from collections import defaultdict
 
-from pdfminer.layout import LTContainer, LTTextGroup, LAParams, LTLine, LTRect
+from pdfminer.layout import LTContainer, LTTextGroup, LAParams, LTLine, LTRect, \
+    LTFigure
 from pdfminer.converter import PDFLayoutAnalyzer
 from pdfminer.utils import apply_matrix_pt
 
 from pt_law_parser.layout import LTNetwork, LTTextHeader, LTTextColumn
 from pt_law_parser.point import Point
-from pt_law_parser.html import Line, Header, Table, BlockquoteEnd, BlockquoteStart
+from pt_law_parser.html import Line, Header, Table, SimpleImage, BlockquoteEnd, \
+    BlockquoteStart
 from pt_law_parser.meta import Meta
 from pt_law_parser.auxiliar import eq, int_round, middle_x
 
@@ -39,6 +41,7 @@ class LawConverter(PDFLayoutAnalyzer):
         self._tables = []
         self._networks_layouts = []
         self._network = LTNetwork()  # network of all links and nodes of tables.
+        self._images = []
 
         # state of the device across pages
         self.previous_line = None
@@ -150,6 +153,10 @@ class LawConverter(PDFLayoutAnalyzer):
         if table not in self._result_lines:
             self.add(table)
 
+    def add_image(self, image):
+        if image not in self._result_lines:
+            self.add(image)
+
     def merge(self, line):
         self._result_lines[-1].merge(Line(line.get_text()))
 
@@ -168,6 +175,12 @@ class LawConverter(PDFLayoutAnalyzer):
             elif line.y0 < table.y0 and table.hoverlap(line) and \
                     not table.voverlap(line):
                 self.add_table(table)
+
+        # check if there is an image that we need to add.
+        for image in self._images:
+            if line.y0 < image.y0 and image.hoverlap(line) and \
+                    not image.voverlap(line):
+                self.add_image(image)
 
         if self.is_page_centered(line):
             # is only a title if not a normal line in a full page
@@ -403,6 +416,9 @@ class LawConverter(PDFLayoutAnalyzer):
         # empty page
         if len(ltpage) == 0:
             return
+
+        self._images = [SimpleImage(item[0]) for item in ltpage
+                        if isinstance(item, LTFigure)]
 
         self._tables = []
         self._networks_layouts = []

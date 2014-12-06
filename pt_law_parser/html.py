@@ -1,7 +1,7 @@
 import re
 from collections import defaultdict
 
-from pdfminer.layout import LTComponent
+from pdfminer.layout import LTComponent, LTImage
 
 from pt_law_parser.auxiliar import eq, middle_x
 
@@ -353,3 +353,15 @@ class BlockquoteEnd(object):
 
     def as_html(self):
         return '</blockquote>'
+
+
+class SimpleImage(LTImage):
+
+    def __init__(self, ltimage):
+        assert(isinstance(ltimage, LTImage))
+        LTComponent.__init__(self, ltimage.bbox)
+        self._name = ltimage.name
+        self._stream = ltimage.stream
+
+    def as_html(self):
+        return '<p>(Ver imagem no documento original.)</p>'

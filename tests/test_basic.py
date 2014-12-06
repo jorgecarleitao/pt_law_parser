@@ -111,7 +111,7 @@ class Test130252(TestDocument):
 
     def test_page_4(self):
         """
-        Big tables and centered titles
+        Big tables, centered titles and image.
         """
         file_name = 'tests/samples/130252.pdf'
         self._run_test(file_name, [3])
