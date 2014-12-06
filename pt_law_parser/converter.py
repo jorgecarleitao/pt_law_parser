@@ -467,6 +467,7 @@ class LawConverter(PDFLayoutAnalyzer):
 
     def is_starting_cite(self, line, column):
         return not self.is_full_width(line, column) and \
+            not self.is_paragraph(line, column) and \
             line[0].get_text() == u'«' and u'»' not in line.get_text()
 
     @staticmethod
