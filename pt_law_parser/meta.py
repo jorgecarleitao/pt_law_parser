@@ -106,7 +106,7 @@ class Meta(object):
         pieces = number_and_date.split(u'—')
         number = int(pieces[0].strip().split(' ')[1])
         try:
-            date = datetime.datetime.strptime(pieces[1].strip(), '%d-%m-%Y').date
+            date = datetime.datetime.strptime(pieces[1].strip(), '%d-%m-%Y').date()
         except ValueError:
             # version that uses full date.
             date = self._build_date(pieces[1])
@@ -120,6 +120,8 @@ class Meta(object):
             self._parse_header_v1(header)
         elif len(header) == 3:
             self._parse_header_v2(header)
+        else:
+            raise NotImplementedError('Size of header is %d' % len(header))
 
     @property
     def version(self):
