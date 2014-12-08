@@ -357,10 +357,15 @@ class LawConverter(PDFLayoutAnalyzer):
 
     def _is_summary_page(self, items):
         # todo: this is too broad. Make it more restrict.
-        for rectangle in [item for item in items if isinstance(item, LTRect)]:
+        rectangles = [item for item in items if isinstance(item, LTRect)]
+
+        for rectangle in rectangles:
             # if is centered but not on the bottom of the page.
             if self.is_page_centered(rectangle) and not rectangle.y1 < 80:
                 return True
+
+        if not rectangles:
+            return False
 
         if len(items) <= 3:
             return False
@@ -413,8 +418,9 @@ class LawConverter(PDFLayoutAnalyzer):
         if self._is_summary_page(items):
             return
 
-        # empty page
-        if len(ltpage) == 0:
+        # empty page (no header or empty left column)
+        if len(ltpage) < 3 or not isinstance(ltpage[0], LTTextHeader) or \
+                not len(ltpage[1]):
             return
 
         self._images = [SimpleImage(item[0]) for item in ltpage
@@ -564,23 +570,20 @@ class LAOrganizer(LAParams):
                           char_margin=2)
 
     @staticmethod
-    def _organize_header(header, lines):
-        while lines[0].y0 > HEADER_MIN_Y:
-            header.add(lines.pop(0))
-
-        return lines
-
-    @staticmethod
     def _last_page_limit(items):
         """
         Returns the y of the line that ends the last page.
         """
-        items = [item for item in items if isinstance(item, LTLine)]
-        items.sort(key=lambda item: item.y0)
+        lines = [item for item in items if isinstance(item, LTLine)]
+        lines.sort(key=lambda item: item.y0)
 
-        if len(items) >= 2 and LawConverter.is_page_centered(items[1]) and \
-                items[0].x0 > MIDDLE_X1:
-            return items[1].y0
+        if len(lines) >= 2 and LawConverter.is_page_centered(lines[1]) and \
+                lines[0].x0 > MIDDLE_X1:
+            return lines[1].y0
+        # documents from 1997
+        elif len(lines) >= 4 and LawConverter.is_page_centered(lines[3]) and \
+                lines[0].x0 < MIDDLE_X1 and lines[1].x0 < MIDDLE_X1:
+            return lines[2].y0
         else:
             return 0
 
@@ -589,12 +592,14 @@ class LAOrganizer(LAParams):
         left_column = LTTextColumn()
         right_column = LTTextColumn()
 
-        lines = self._organize_header(header, lines)
+        header_min_y = lines[0].y0 - 5
 
         last_page_limit = self._last_page_limit(other_objs)
 
         for line in lines:
-            assert(line.y0 < HEADER_MIN_Y)  # assert it is not on the header
+            if line.y0 > header_min_y:
+                header.add(line)
+                continue
 
             # ignores lines below the end
             if line.y0 <= last_page_limit:
