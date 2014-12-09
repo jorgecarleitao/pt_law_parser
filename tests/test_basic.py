@@ -152,6 +152,17 @@ class Test0045800458(TestDocument):
         self.assertEqual(18, len(self.device.titles))
 
 
+class Test116008(TestDocument):
+    def test_page_2(self):
+        file_name = 'tests/samples/116008.pdf'
+        self._run_test(file_name, [1])
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.2').split('\n'))
+
+        self.assertEqual(11, len(self.device.titles))
+
+
 class Test118381(TestDocument):
     def test_page_2(self):
         """
