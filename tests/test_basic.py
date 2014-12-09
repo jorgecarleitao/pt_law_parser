@@ -152,6 +152,18 @@ class Test0045800458(TestDocument):
         self.assertEqual(18, len(self.device.titles))
 
 
+class Test118381(TestDocument):
+    def test_page_2(self):
+        """
+        A case where there is a paragraph with a different paragraph space
+        """
+        file_name = 'tests/samples/118381.pdf'
+        self._run_test(file_name, [1])
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.2').split('\n'))
+
+
 class Test128839(TestDocument):
     def test_page_1(self):
         file_name = 'tests/samples/128839.pdf'
@@ -263,9 +275,6 @@ class Test131371(TestDocument):
         """
         file_name = 'tests/samples/131371.pdf'
         self._run_test(file_name, [3])
-
-        with open('s.html', 'w') as f:
-            f.write(self.device.as_html().encode('utf-8'))
 
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.4').split('\n'))

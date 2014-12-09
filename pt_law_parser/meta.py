@@ -130,3 +130,7 @@ class Meta(object):
     @property
     def pages(self):
         return self._pages
+
+    @property
+    def year(self):
+        return self._date.year

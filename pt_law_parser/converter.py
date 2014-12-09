@@ -18,17 +18,50 @@ HEADER_MIN_Y = 775
 MIDDLE_X1 = (292 + 306.0)/2
 
 
+class ConverterParameters(object):
+    """
+    This class is responsible for providing document-dependent parameters.
+    """
+    _CITING_SPACE = {2002: 0}
+    _DEFAULT_PARAGRAPH_SPACE = 11.34
+    _PARAGRAPH_SPACE = {2002: (10.668, 21.958, 31.98),
+                        'v2': (_DEFAULT_PARAGRAPH_SPACE, 20.93)}
+
+    def citing_space(self, meta):
+        if meta.year in self._CITING_SPACE:
+            return self._CITING_SPACE[meta.year]
+        else:
+            return 11.34
+
+    def _paragraph_spaces(self, meta):
+        if meta.version == 1:
+            return [self._DEFAULT_PARAGRAPH_SPACE]
+
+        if meta.year in self._PARAGRAPH_SPACE:
+            return self._PARAGRAPH_SPACE[meta.year]
+        elif 'v%d' % meta.version in self._PARAGRAPH_SPACE:
+            return self._PARAGRAPH_SPACE['v%d' % meta.version]
+        else:
+            return [self._DEFAULT_PARAGRAPH_SPACE]
+
+    def is_paragraph(self, meta, line, no_paragraph_x0):
+        is_paragraph = False
+        for paragraph_space in self._paragraph_spaces(meta):
+            is_paragraph = is_paragraph or \
+                eq(line.x0 - no_paragraph_x0, paragraph_space, 2)
+
+        return is_paragraph
+
+
 class LawConverter(PDFLayoutAnalyzer):
     """
     The main parser of a page. It is a state machine between pages, and
     is able to parse a single page.
     """
-
-    PARAGRAPH_SPACE = 11.34
-    CITING_SPACE = 11.34
-
     def __init__(self, rsrcmgr, pageno=1, laparams=None):
         PDFLayoutAnalyzer.__init__(self, rsrcmgr, pageno=pageno, laparams=laparams)
+
+        self._parameters = ConverterParameters()
 
         # attributes result of the parsing
         self.meta = Meta()
@@ -83,33 +116,28 @@ class LawConverter(PDFLayoutAnalyzer):
         """
         Checks if line is a new paragraph
         """
-        is_paragraph = eq(line.x0 - (column.x0 + self.citing_space),
-                          self.PARAGRAPH_SPACE, 1)
-
-        if self.meta.version == 1:
-            return is_paragraph
-        else:
-            is_sub_paragraph = eq(line.x0 - (column.x0 + self.citing_space),
-                                  2*self.PARAGRAPH_SPACE - 1, 1)
-
-            return is_paragraph or is_sub_paragraph
+        no_paragraph_x0 = column.x0 + self.citing_space
+        return self._parameters.is_paragraph(self.meta, line, no_paragraph_x0)
 
     def _is_text(self, line, column):
         """
-        Special conditions to exclude text that is similar to a title.
+        Special conditions to exclude what is text but would otherwise be
+        interpreted as a title.
         """
+        # todo: send this code logic to the ConverterParameters
         if self.meta.version == 1:
             return False
 
+        paragraph_space = 11.34
         previous_is_sub_paragraph = eq(self.previous_line.x0 -
                                        (column.x0 + self.citing_space),
-                                       2*self.PARAGRAPH_SPACE - 1, 1)
+                                       2*paragraph_space - 1, 1)
         previous_is_sub_line = eq(self.previous_line.x0 -
                                   (column.x0 + self.citing_space),
-                                  3*self.PARAGRAPH_SPACE, 1)
+                                  3*paragraph_space, 1)
 
         is_sub_line = eq(line.x0 - (column.x0 + self.citing_space),
-                         3*self.PARAGRAPH_SPACE, 1)
+                         3*paragraph_space, 1)
 
         return (previous_is_sub_paragraph or previous_is_sub_line) and \
             is_sub_line
@@ -137,7 +165,7 @@ class LawConverter(PDFLayoutAnalyzer):
 
     @property
     def citing_space(self):
-        return self._is_citing*self.CITING_SPACE
+        return self._parameters.citing_space(self.meta)*self._is_citing
 
     def add(self, element):
         self._result_lines.append(element)

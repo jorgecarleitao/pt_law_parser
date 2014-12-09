@@ -40,6 +40,14 @@ class TestParser(TestDocument):
 
         self.assertEqual(9, len(device.meta.pages))
 
+    def test_118381(self):
+        """
+        Document from 2002.
+        """
+        device = parse_document('tests/samples/118381.pdf')
+
+        self.assertEqual(5, len(device.meta.pages))
+
     def test_130252(self):
         """
         Document from 2010.
