@@ -397,47 +397,21 @@ class LawConverter(PDFLayoutAnalyzer):
 
         if len(items) <= 3:
             return False
-        items = list(reversed(items[3:]))
 
-        # the summary pages have a rectangle and a line
-        line1 = None
-        line2 = None
-        rect = None
+        # ignore header and 2 columns.
+        items = list(sorted(items[3:], key=lambda x: (x.x0, x.y0)))
 
-        if isinstance(items[0], LTRect):
-            rect = items[0]
-        elif isinstance(items[0], LTLine):
-            line1 = items[0]
-            if isinstance(items[1], LTLine):
-                line2 = items[1]
-                rect = items[2]
-            else:
-                rect = items[1]
-
-        if rect is None or line1 is None:
+        if not isinstance(items[0], LTRect):
             return False
-        # from here on, we are in summary page.
-        # let's just make sure:
+        # some layouts have a rectangle too much.
+        if isinstance(items[1], LTRect):
+            items.pop(1)
 
-        assert(eq(rect.x1, line1.x0, 1))
-        if line2 is not None:
-            assert(eq(rect.x1, line2.x0, 1))
-
-        # set line1 to be always above line2
-        if line2 and line2.y0 > line1.y0:
-            line1, line2 = line2, line1
-
-        # if the line1 is up, it is the first page of the summary pages
-        if eq(rect.y1, line1.y0, 1):
-            # first page summary
-            if line2 and eq(rect.y0, line2.y0, 1):
-                # one page summary
-                pass
-        # if the line1 is down, it is the last page of the summary pages
-        if eq(rect.y0, line1.y0, 1):
-            # last page summary
-            pass
-        return True
+        # situation where we have a left-rectangle, summary
+        if eq(items[0].x0, 50, 2) and eq(items[0].x1, 169.512, 2):
+            return True
+        else:
+            return False
 
     def receive_layout(self, ltpage):
 
