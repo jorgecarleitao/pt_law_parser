@@ -313,6 +313,13 @@ class LawConverter(PDFLayoutAnalyzer):
                     if x != x_prime and abs(x - x_prime) < 5:
                         if raw_x_values[x_prime] > raw_x_values[x]:
                             replace_x[x] = x_prime
+                        elif raw_x_values[x_prime] == raw_x_values[x]:
+                            # in case they are the same, we must ensure
+                            # we don't substitute both by each other.
+                            if x > x_prime:
+                                replace_x[x] = x_prime
+                            else:
+                                replace_x[x_prime] = x
                         else:
                             replace_x[x_prime] = x
 
@@ -322,6 +329,13 @@ class LawConverter(PDFLayoutAnalyzer):
                     if y != y_prime and abs(y - y_prime) < 5:
                         if raw_y_values[y_prime] > raw_y_values[y]:
                             replace_y[y] = y_prime
+                        elif raw_y_values[y_prime] == raw_y_values[y]:
+                            # in case they are the same, we must ensure
+                            # we don't substitute both by each other.
+                            if y > y_prime:
+                                replace_y[y] = y_prime
+                            else:
+                                replace_y[y_prime] = y
                         else:
                             replace_y[y_prime] = y
 
