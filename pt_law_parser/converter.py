@@ -363,11 +363,9 @@ class LawConverter(PDFLayoutAnalyzer):
             """
             table.add(point)
             for link in self._network.links[point]:
+                if link not in table:
+                    add_point(table, link)
                 table.add_link(point, link)
-
-            for x in self._network.links[point]:
-                if x not in table:
-                    add_point(table, x)
 
         for point in self._network.points:
             # try to find the table of this point.
@@ -455,6 +453,7 @@ class LawConverter(PDFLayoutAnalyzer):
                 for point in item.points:
                     self._network.add(point)
                     for link in item.links[point]:
+                        self._network.add(link)
                         self._network.add_link(point, link)
             if isinstance(item, LTContainer):
                 for child in item:

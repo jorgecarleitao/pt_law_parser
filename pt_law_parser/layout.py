@@ -45,6 +45,7 @@ class LTNetwork(LTItem):
         self.points.add(point)
 
     def add_link(self, point, point_prime):
+        assert(point in self and point_prime in self)
         if point not in self.links:
             self.links[point] = set()
         self.links[point].add(point_prime)
