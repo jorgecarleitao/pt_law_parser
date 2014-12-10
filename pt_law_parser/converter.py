@@ -70,7 +70,6 @@ class LawConverter(PDFLayoutAnalyzer):
 
         # attributes reset on each new page
         self._tables = []
-        self._network = LTNetwork()  # network of all links and nodes of tables.
         self._images = []
 
         # state of the device across pages
@@ -271,6 +270,37 @@ class LawConverter(PDFLayoutAnalyzer):
         else:
             return False
 
+    def _create_tables(self, ltpage):
+        self._tables = []
+        _network = LTNetwork()
+
+        def merge_networks(item):
+            """
+            Recursively merges all `LTNetwork` instances into a single
+            `LTNetwork`, `_network`.
+            """
+            if isinstance(item, LTNetwork):
+                for point in item.points:
+                    _network.add(point)
+                    for link in item.links[point]:
+                        _network.add(link)
+                        _network.add_link(point, link)
+            if isinstance(item, LTContainer):
+                for child in item:
+                    merge_networks(child)
+
+        merge_networks(ltpage)
+
+        networks = _network.create_components()
+
+        # creates tables from networks.
+        for network in networks:
+            try:
+                table = Table(network)
+                self._tables.append(table)
+            except Table.EmptyTableError:
+                pass
+
     def receive_layout(self, ltpage):
 
         # checks if we are in a summary page
@@ -286,35 +316,7 @@ class LawConverter(PDFLayoutAnalyzer):
         self._images = [SimpleImage(item[0]) for item in ltpage
                         if isinstance(item, LTFigure)]
 
-        self._tables = []
-        self._network = LTNetwork()
-
-        def merge_tables(item):
-            """
-            Recursively merges all `LTNetwork` instances into a single
-            `LTNetwork`, `self._network`.
-            """
-            if isinstance(item, LTNetwork):
-                for point in item.points:
-                    self._network.add(point)
-                    for link in item.links[point]:
-                        self._network.add(link)
-                        self._network.add_link(point, link)
-            if isinstance(item, LTContainer):
-                for child in item:
-                    merge_tables(child)
-
-        merge_tables(ltpage)
-
-        networks = self._network.create_components()
-
-        # creates tables from networks.
-        for network in networks:
-            try:
-                table = Table(network)
-                self._tables.append(table)
-            except Table.EmptyTableError:
-                pass
+        self._create_tables(ltpage)
 
         header = ltpage[0]
         left_column = ltpage[1]
