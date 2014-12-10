@@ -4,6 +4,7 @@ from collections import defaultdict
 from pdfminer.layout import LTComponent, LTImage
 
 from pt_law_parser.auxiliar import eq, middle_x
+from pt_law_parser.point import Point
 
 
 class Line(object):
@@ -120,39 +121,45 @@ class Table(LTComponent):
         self._columns_borders = sorted(list(
             set(point.x for point in network.points)))
 
+        LTComponent.__init__(self, (self._columns_borders[0],
+                                    self._rows_borders[0],
+                                    self._columns_borders[-1],
+                                    self._rows_borders[-1]))
+
+        self._close_network(network)
         self._create_links(network)
-        self._create_closing_links(network)
         self._cells = self._create_cells(network)
         self._elements = self._build_elements(self._cells)
 
         if not self._cells:
             raise self.EmptyTableError
-        x0 = min(cell.x0 for cell in self._cells)
-        x1 = max(cell.x1 for cell in self._cells)
-        y0 = min(cell.y0 for cell in self._cells)
-        y1 = max(cell.y1 for cell in self._cells)
 
-        LTComponent.__init__(self, (x0, y0, x1, y1))
-
-    def _create_closing_links(self, network):
+    def _close_network(self, network):
         """
-        Creates links that close the x-borders of the table.
+        Adds missing corners and border links to close the network.
         """
-        points = [point for point in network
-                  if point.x == self._columns_borders[0]]
+        # add possible missing corners
+        for corner in ((self.x0, self.y0), (self.x0, self.y1), (self.x1, self.y1),
+                       (self.x1, self.y0)):
+            network.add(Point(corner))
 
-        for point in points:
-            for point_prime in points:
-                if point != point_prime:
-                    network.add_link(point, point_prime)
+        # add possible missing bottom and top borders
+        for row in (self._rows_borders[0], self._rows_borders[-1]):
+            points = sorted([point for point in network if point.y == row],
+                            key=lambda p: p.x)
+            for i, point in enumerate(points):
+                if i == 0:
+                    continue
+                network.add_link(points[i - 1], point)
 
-        points = [point for point in network
-                  if point.x == self._columns_borders[-1]]
-
-        for point in points:
-            for point_prime in points:
-                if point != point_prime:
-                    network.add_link(point, point_prime)
+        # add possible missing left and right borders
+        for column in (self._columns_borders[0], self._columns_borders[-1]):
+            points = sorted([point for point in network if point.x == column],
+                            key=lambda p: p.y)
+            for i, point in enumerate(points):
+                if i == 0:
+                    continue
+                network.add_link(points[i - 1], point)
 
     def _create_links(self, network):
         """

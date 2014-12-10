@@ -68,3 +68,31 @@ class TestCase(unittest.TestCase):
                    '</table>'
 
         self.assertEqual(expected, table.as_html())
+
+    def test_incomplete_table(self):
+        """
+        Table with missing bottom border.
+        """
+        points = [Point((0, 8)), Point((0, 9)),
+                  Point((3, 0)), Point((3, 8)), Point((3, 9)),
+                  Point((5, 0)), Point((5, 8)), Point((5, 9)),
+                  Point((8, 8)), Point((8, 9))]
+
+        network = LTNetwork()
+        for point in points:
+            network.add(point)
+
+        network.add_link(points[0], points[3])
+        network.add_link(points[1], points[4])
+        network.add_link(points[2], points[3])
+        network.add_link(points[3], points[4])
+        network.add_link(points[3], points[6])
+        network.add_link(points[4], points[7])
+        network.add_link(points[5], points[6])
+        network.add_link(points[6], points[7])
+        network.add_link(points[6], points[8])
+        network.add_link(points[7], points[9])
+
+        table = Table(network)
+
+        self.assertEqual(6, len(table.cells))
