@@ -293,59 +293,59 @@ class LawConverter(PDFLayoutAnalyzer):
         for point in points_to_remove:
             self._network.remove_point(point)
 
-    def _sanitize_layouts(self):
+    def _sanitize_layout(self):
         """
         Makes the links horizontal/vertical by aligning nodes.
         """
-        for table in self._networks_layouts:
+        table = self._network
 
-            # make an histogram of the most common x and y values
-            raw_x_values = defaultdict(int)
-            raw_y_values = defaultdict(int)
-            for point in table:
-                raw_x_values[point.x] += 1
-                raw_y_values[point.y] += 1
+        # make an histogram of the most common x and y values
+        raw_x_values = defaultdict(int)
+        raw_y_values = defaultdict(int)
+        for point in table:
+            raw_x_values[point.x] += 1
+            raw_y_values[point.y] += 1
 
-            # stores which values to replace (remove close values)
-            replace_x = {}
-            for x in raw_x_values:
-                for x_prime in raw_x_values:
-                    if x != x_prime and abs(x - x_prime) < 5:
-                        if raw_x_values[x_prime] > raw_x_values[x]:
+        # stores which values to replace (remove close values)
+        replace_x = {}
+        for x in raw_x_values:
+            for x_prime in raw_x_values:
+                if x != x_prime and abs(x - x_prime) < 5:
+                    if raw_x_values[x_prime] > raw_x_values[x]:
+                        replace_x[x] = x_prime
+                    elif raw_x_values[x_prime] == raw_x_values[x]:
+                        # in case they are the same, we must ensure
+                        # we don't substitute both by each other.
+                        if x > x_prime:
                             replace_x[x] = x_prime
-                        elif raw_x_values[x_prime] == raw_x_values[x]:
-                            # in case they are the same, we must ensure
-                            # we don't substitute both by each other.
-                            if x > x_prime:
-                                replace_x[x] = x_prime
-                            else:
-                                replace_x[x_prime] = x
                         else:
                             replace_x[x_prime] = x
+                    else:
+                        replace_x[x_prime] = x
 
-            replace_y = {}
-            for y in raw_y_values:
-                for y_prime in raw_y_values:
-                    if y != y_prime and abs(y - y_prime) < 5:
-                        if raw_y_values[y_prime] > raw_y_values[y]:
+        replace_y = {}
+        for y in raw_y_values:
+            for y_prime in raw_y_values:
+                if y != y_prime and abs(y - y_prime) < 5:
+                    if raw_y_values[y_prime] > raw_y_values[y]:
+                        replace_y[y] = y_prime
+                    elif raw_y_values[y_prime] == raw_y_values[y]:
+                        # in case they are the same, we must ensure
+                        # we don't substitute both by each other.
+                        if y > y_prime:
                             replace_y[y] = y_prime
-                        elif raw_y_values[y_prime] == raw_y_values[y]:
-                            # in case they are the same, we must ensure
-                            # we don't substitute both by each other.
-                            if y > y_prime:
-                                replace_y[y] = y_prime
-                            else:
-                                replace_y[y_prime] = y
                         else:
                             replace_y[y_prime] = y
+                    else:
+                        replace_y[y_prime] = y
 
-            for point in table:
-                if point.x in replace_x:
-                    table.replace(point, Point((replace_x[point.x], point.y)))
+        for point in table:
+            if point.x in replace_x:
+                table.replace(point, Point((replace_x[point.x], point.y)))
 
-            for point in table:
-                if point.y in replace_y:
-                    table.replace(point, Point((point.x, replace_y[point.y])))
+        for point in table:
+            if point.y in replace_y:
+                table.replace(point, Point((point.x, replace_y[point.y])))
 
     def _build_tables(self):
         """
@@ -461,9 +461,9 @@ class LawConverter(PDFLayoutAnalyzer):
 
         merge_tables(ltpage)
         self._sanitize_network()
+        self._sanitize_layout()
         self._sanitize_network1()
         self._build_tables()
-        self._sanitize_layouts()
 
         # creates components with tables.
         for network in self._networks_layouts:
