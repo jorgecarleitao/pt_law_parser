@@ -1,6 +1,9 @@
+from collections import defaultdict
 from math import ceil
 
 from pdfminer.layout import LTTextBox, LTItem
+
+from pt_law_parser.point import Point
 
 
 class LTTextColumn(LTTextBox):
@@ -84,3 +87,157 @@ class LTNetwork(LTItem):
 
     def print_nodes(self):
         print('{%s}' % ','.join('{%s}' % point for point in self._points))
+
+    def _remove_duplicates(self):
+        """
+        Removes duplicated points close to each other.
+        """
+        # select points to remove by proximity
+        points_to_remove = set()
+        for point in self:
+            for point_prime in self:
+                if point != point_prime and\
+                        abs(point_prime.x - point.x) <= 2 and\
+                        abs(point_prime.y - point.y) <= 2 and\
+                        (point_prime, point) not in points_to_remove:
+                    points_to_remove.add((point, point_prime))
+
+        removed_points = set()
+        for point, point_prime in points_to_remove:
+            if point in removed_points:
+                continue
+
+            for link_prime in self.links[point_prime]:
+                self.links[point].add(link_prime)
+                self.links[link_prime].add(point)
+                self.links[link_prime].remove(point_prime)
+
+            # track removed points
+            removed_points.add(point_prime)
+            self.remove_point(point_prime)
+
+    def _align_nodes(self):
+        """
+        Makes the links horizontal/vertical by aligning nodes.
+        """
+        # make an histogram of the most common x and y values
+        raw_x_values = defaultdict(int)
+        raw_y_values = defaultdict(int)
+        for point in self:
+            raw_x_values[point.x] += 1
+            raw_y_values[point.y] += 1
+
+        # stores which values to replace (remove close values)
+        replace_x = {}
+        for x in raw_x_values:
+            for x_prime in raw_x_values:
+                if x != x_prime and abs(x - x_prime) < 5:
+                    if raw_x_values[x_prime] > raw_x_values[x]:
+                        replace_x[x] = x_prime
+                    elif raw_x_values[x_prime] == raw_x_values[x]:
+                        # in case they are the same, we must ensure
+                        # we don't substitute both by each other.
+                        if x > x_prime:
+                            replace_x[x] = x_prime
+                        else:
+                            replace_x[x_prime] = x
+                    else:
+                        replace_x[x_prime] = x
+
+        replace_y = {}
+        for y in raw_y_values:
+            for y_prime in raw_y_values:
+                if y != y_prime and abs(y - y_prime) < 5:
+                    if raw_y_values[y_prime] > raw_y_values[y]:
+                        replace_y[y] = y_prime
+                    elif raw_y_values[y_prime] == raw_y_values[y]:
+                        # in case they are the same, we must ensure
+                        # we don't substitute both by each other.
+                        if y > y_prime:
+                            replace_y[y] = y_prime
+                        else:
+                            replace_y[y_prime] = y
+                    else:
+                        replace_y[y_prime] = y
+
+        for point in self:
+            if point.x in replace_x:
+                self.replace(point, Point((replace_x[point.x], point.y)))
+
+        for point in self:
+            if point.y in replace_y:
+                self.replace(point, Point((point.x, replace_y[point.y])))
+
+    def _remove_siblings(self):
+        """
+        Removes nodes with only two links (are not important for table creation).
+        """
+        points_to_remove = set()
+        for point in self:
+            if len(self.links[point]) == 2:
+                point1 = list(self.links[point])[0]
+                point2 = list(self.links[point])[1]
+
+                self.links[point1].remove(point)
+                self.links[point1].add(point2)
+
+                self.links[point2].add(point1)
+                self.links[point2].remove(point)
+
+                points_to_remove.add(point)
+
+        for point in points_to_remove:
+            self.remove_point(point)
+
+    def _get_components(self):
+        """
+        Returns a list of non-overlapping networks.
+        """
+        networks = []
+
+        def add_point(network, point):
+            """
+            Recursively adds a point and respective connected component to
+            network.
+            """
+            network.add(point)
+            for link in self.links[point]:
+                if link not in network:
+                    add_point(network, link)
+                network.add_link(point, link)
+
+        for point in self.points:
+            # try to find the network of this point.
+            found = None
+            for network in networks:
+                if point in network:
+                    found = network
+                    break
+
+            # if no network exists, create one for it.
+            if found is None:
+                networks.append(LTNetwork())
+                found = networks[-1]
+
+            # finally, add its connected component to the network.
+            add_point(found, point)
+
+            # asserts that the connected component is on that network only.
+            for link in self.links[point]:
+                assert(link in found)
+                for network in networks:
+                    if network != found:
+                        assert(point not in network)
+                        assert(link not in network)
+
+        # asserts that we didn't lost any point
+        assert(sum(len(network) for network in networks) ==
+               len(self))
+
+        return networks
+
+    def create_components(self):
+        self._remove_duplicates()
+        self._align_nodes()
+        self._remove_siblings()
+        return self._get_components()

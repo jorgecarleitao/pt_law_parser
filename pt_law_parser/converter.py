@@ -1,6 +1,4 @@
 # coding=utf-8
-from collections import defaultdict
-
 from pdfminer.layout import LTContainer, LTTextGroup, LAParams, LTLine, LTRect, \
     LTFigure
 from pdfminer.converter import PDFLayoutAnalyzer
@@ -72,7 +70,6 @@ class LawConverter(PDFLayoutAnalyzer):
 
         # attributes reset on each new page
         self._tables = []
-        self._networks_layouts = []
         self._network = LTNetwork()  # network of all links and nodes of tables.
         self._images = []
 
@@ -244,157 +241,6 @@ class LawConverter(PDFLayoutAnalyzer):
             else:
                 self.merge(line)
 
-    def _sanitize_network(self):
-        """
-        Removes duplicated points close to each other.
-        """
-        # select points to remove by proximity
-        points_to_remove = set()
-        for point in self._network.points:
-            for point_prime in self._network.points:
-                if point != point_prime and\
-                        abs(point_prime.x - point.x) <= 2 and\
-                        abs(point_prime.y - point.y) <= 2 and\
-                        (point_prime, point) not in points_to_remove:
-                    points_to_remove.add((point, point_prime))
-
-        removed_points = set()
-        for point, point_prime in points_to_remove:
-            if point in removed_points:
-                continue
-
-            for link_prime in self._network.links[point_prime]:
-                self._network.links[point].add(link_prime)
-                self._network.links[link_prime].add(point)
-                self._network.links[link_prime].remove(point_prime)
-
-            # track removed points
-            removed_points.add(point_prime)
-            self._network.remove_point(point_prime)
-
-    def _sanitize_network1(self):
-        """
-        Removes nodes with only two links (are not important for table creation).
-        """
-        points_to_remove = set()
-        for point in self._network.points:
-            if len(self._network.links[point]) == 2:
-                point1 = list(self._network.links[point])[0]
-                point2 = list(self._network.links[point])[1]
-
-                self._network.links[point1].remove(point)
-                self._network.links[point1].add(point2)
-
-                self._network.links[point2].add(point1)
-                self._network.links[point2].remove(point)
-
-                points_to_remove.add(point)
-
-        for point in points_to_remove:
-            self._network.remove_point(point)
-
-    def _sanitize_layout(self):
-        """
-        Makes the links horizontal/vertical by aligning nodes.
-        """
-        table = self._network
-
-        # make an histogram of the most common x and y values
-        raw_x_values = defaultdict(int)
-        raw_y_values = defaultdict(int)
-        for point in table:
-            raw_x_values[point.x] += 1
-            raw_y_values[point.y] += 1
-
-        # stores which values to replace (remove close values)
-        replace_x = {}
-        for x in raw_x_values:
-            for x_prime in raw_x_values:
-                if x != x_prime and abs(x - x_prime) < 5:
-                    if raw_x_values[x_prime] > raw_x_values[x]:
-                        replace_x[x] = x_prime
-                    elif raw_x_values[x_prime] == raw_x_values[x]:
-                        # in case they are the same, we must ensure
-                        # we don't substitute both by each other.
-                        if x > x_prime:
-                            replace_x[x] = x_prime
-                        else:
-                            replace_x[x_prime] = x
-                    else:
-                        replace_x[x_prime] = x
-
-        replace_y = {}
-        for y in raw_y_values:
-            for y_prime in raw_y_values:
-                if y != y_prime and abs(y - y_prime) < 5:
-                    if raw_y_values[y_prime] > raw_y_values[y]:
-                        replace_y[y] = y_prime
-                    elif raw_y_values[y_prime] == raw_y_values[y]:
-                        # in case they are the same, we must ensure
-                        # we don't substitute both by each other.
-                        if y > y_prime:
-                            replace_y[y] = y_prime
-                        else:
-                            replace_y[y_prime] = y
-                    else:
-                        replace_y[y_prime] = y
-
-        for point in table:
-            if point.x in replace_x:
-                table.replace(point, Point((replace_x[point.x], point.y)))
-
-        for point in table:
-            if point.y in replace_y:
-                table.replace(point, Point((point.x, replace_y[point.y])))
-
-    def _build_tables(self):
-        """
-        Builds non-overlapping tables from overlapping tables.
-
-        Currently is only used to build the size of the independent tables,
-        but also contains all information about the table, which can be used to
-        reconstruct it.
-        """
-
-        def add_point(table, point):
-            """
-            Recursively adds a point and respective connected component to
-            table.
-            """
-            table.add(point)
-            for link in self._network.links[point]:
-                if link not in table:
-                    add_point(table, link)
-                table.add_link(point, link)
-
-        for point in self._network.points:
-            # try to find the table of this point.
-            found = None
-            for network in self._networks_layouts:
-                if point in network:
-                    found = network
-                    break
-
-            # if no table exists, create one for it.
-            if found is None:
-                self._networks_layouts.append(LTNetwork())
-                found = self._networks_layouts[-1]
-
-            # finally, add its connected component to the table.
-            add_point(found, point)
-
-            # asserts that the connected component is on that table only.
-            for link in self._network.links[point]:
-                assert(link in found)
-                for network in self._networks_layouts:
-                    if network != found:
-                        assert(point not in network)
-                        assert(link not in network)
-
-        # asserts that we didn't lost any point
-        assert(sum(len(table) for table in self._networks_layouts) ==
-               len(self._network.points))
-
     def _is_summary_page(self, items):
         # todo: this is too broad. Make it more restrict.
         rectangles = [item for item in items if isinstance(item, LTRect)]
@@ -441,7 +287,6 @@ class LawConverter(PDFLayoutAnalyzer):
                         if isinstance(item, LTFigure)]
 
         self._tables = []
-        self._networks_layouts = []
         self._network = LTNetwork()
 
         def merge_tables(item):
@@ -460,13 +305,11 @@ class LawConverter(PDFLayoutAnalyzer):
                     merge_tables(child)
 
         merge_tables(ltpage)
-        self._sanitize_network()
-        self._sanitize_layout()
-        self._sanitize_network1()
-        self._build_tables()
 
-        # creates components with tables.
-        for network in self._networks_layouts:
+        networks = self._network.create_components()
+
+        # creates tables from networks.
+        for network in networks:
             try:
                 table = Table(network)
                 self._tables.append(table)
