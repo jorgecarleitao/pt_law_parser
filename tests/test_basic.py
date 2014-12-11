@@ -26,6 +26,15 @@ class TestDocument(unittest.TestCase):
             interpreter.process_page(page)
         fp.close()
 
+    def _print_result(self, file_name='s.html'):
+        """
+        Method to print the result of the test to a file, to inspection.
+        """
+        # to see lines, add <style>table, th, td {border: 1px solid black;
+        # border-collapse: collapse;} </style>
+        with open(file_name, 'w') as f:
+            f.write(self.device.as_html().encode('utf-8'))
+
 
 class Test01060115(TestDocument):
     """
@@ -155,9 +164,16 @@ class Test0045800458(TestDocument):
 class Test107190(TestDocument):
 
     @unittest.expectedFailure
-    # This test fails because it contains a table that is composed of lines that
-    # intersect each other, instead of finishing exactly at the intersection.
-    # todo: fix this by generalizing the LTNetwork for this case.
+    # todo: paragraph with extreme space looks like a title. Catch it.
+    def test_page_2(self):
+        file_name = 'tests/samples/107190.pdf'
+        self._run_test(file_name, [1])
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.2').split('\n'))
+
+        self.assertEqual(14, len(self.device.titles))
+
     def test_page_12(self):
         file_name = 'tests/samples/107190.pdf'
         self._run_test(file_name, [11])
@@ -165,7 +181,7 @@ class Test107190(TestDocument):
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.12').split('\n'))
 
-        self.assertEqual(11, len(self.device.titles))
+        self.assertEqual(6, len(self.device.titles))
 
 
 class Test116008(TestDocument):
@@ -179,16 +195,27 @@ class Test116008(TestDocument):
         self.assertEqual(11, len(self.device.titles))
 
     @unittest.expectedFailure
-    # todo: see why this test fails. May be related with Test107190.test_page_12.
+    # todo: Some text is missing.
     def test_page_4(self):
         file_name = 'tests/samples/116008.pdf'
         self._run_test(file_name, [3])
 
-        # todo: create the file with the expected result.
-        self.assertEqual(self.device.as_html().split('\n'),
-                         self.get_expected(file_name+'.4').split('\n'))
+        #self.assertEqual(self.device.as_html().split('\n'),
+        #                 self.get_expected(file_name+'.4').split('\n'))
 
         self.assertEqual(12, len(self.device.titles))
+
+    @unittest.expectedFailure
+    # todo: Fix order of appearance of table and right column.
+    def test_page_8(self):
+        file_name = 'tests/samples/116008.pdf'
+        self._run_test(file_name, [7])
+
+        self._print_result()
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.8').split('\n'))
+
+        self.assertEqual(15, len(self.device.titles))
 
 
 class Test118381(TestDocument):

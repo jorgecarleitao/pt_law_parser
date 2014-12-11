@@ -16,6 +16,10 @@ HEADER_MIN_Y = 775
 MIDDLE_X1 = (292 + 306.0)/2
 
 
+def crosses_middle(line):
+    return line.x0 < MIDDLE_X1 < line.x1
+
+
 class ConverterParameters(object):
     """
     This class is responsible for providing document-dependent parameters.
@@ -26,9 +30,10 @@ class ConverterParameters(object):
     _CITING_SPACE = {None: 11.34,
                      2002: 0}
 
-    _PARAGRAPH_SPACE = {None: (11.34,),
+    # (8.1992, 6.123) => small letters have smaller paragraph space.
+    _PARAGRAPH_SPACE = {None: (11.34, 8.1992),
                         2002: (10.668, 21.958, 31.98),
-                        'v2': (11.34, 20.93)}
+                        'v2': (11.34, 6.123, 8.1992, 20.93)}
 
     _CENTER_OFFSET = {None: (1.4,),
                       'v2': (0,), 2013: (1.4, -5.33)}
@@ -155,7 +160,7 @@ class LawConverter(PDFLayoutAnalyzer):
 
     @staticmethod
     def is_page_centered(line):
-        return line.x0 < MIDDLE_X1 < line.x1
+        return crosses_middle(line)
 
     def is_column_centered(self, line, column):
         """
@@ -465,11 +470,11 @@ class LAOrganizer(LAParams):
                 lines[0].x1 == rectangles[0].x1:
             return lines[0].y0
 
-        if len(lines) >= 2 and LawConverter.is_page_centered(lines[1]) and \
+        if len(lines) >= 2 and crosses_middle(lines[1]) and \
                 lines[0].x0 > MIDDLE_X1:
             return lines[1].y0
         # documents from 1997
-        elif len(lines) >= 4 and LawConverter.is_page_centered(lines[3]) and \
+        elif len(lines) >= 4 and crosses_middle(lines[3]) and \
                 lines[0].x0 < MIDDLE_X1 and lines[1].x0 < MIDDLE_X1:
             return lines[2].y0
         else:
