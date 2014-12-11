@@ -48,6 +48,7 @@ class LTNetwork(LTItem):
         self.points.add(point)
 
     def add_link(self, point, point_prime):
+        assert(point != point_prime)
         assert(point in self and point_prime in self)
         if point not in self.links:
             self.links[point] = set()
@@ -56,6 +57,14 @@ class LTNetwork(LTItem):
         if point_prime not in self.links:
             self.links[point_prime] = set()
         self.links[point_prime].add(point)
+
+    def remove_link(self, point, point_prime):
+        assert(point in self and point_prime in self)
+        assert(point_prime in self.links[point] and
+               point in self.links[point_prime])
+
+        self.links[point].remove(point_prime)
+        self.links[point_prime].remove(point)
 
     def remove_point(self, point):
         self.points.remove(point)
@@ -80,7 +89,8 @@ class LTNetwork(LTItem):
         for point in self.links:
             for link in self.links[point]:
                 if (link, point) not in links and (point, link) not in links:
-                    links.append((point, link))
+                    points = sorted((point, link), key=lambda p: (p.x, p.y))
+                    links.append(tuple(points))
         return links
 
     def print_links(self):
@@ -243,6 +253,9 @@ class LTNetwork(LTItem):
     def create_components(self):
         self._remove_duplicates()
         self._align_nodes()
+
+        self._fix_intersections()
+
         self._remove_siblings()
 
         self.assert_strait_links()
@@ -261,6 +274,64 @@ class LTNetwork(LTItem):
             for link_prime in links:
                 if intersect(link[0], link[1], link_prime[0], link_prime[1]):
                     raise Exception(link, link_prime)
+
+    def _fix_intersections(self):
+        """
+        Computes all intersections of links and creates points in the
+        intersections, subdividing the links accordingly.
+        """
+        links = self.links_list()
+
+        vertical_links = [link for link in links if link[0].x == link[1].x]
+        horizontal_links = [link for link in links if link[0].y == link[1].y]
+        assert(len(links) == len(vertical_links) + len(horizontal_links))
+
+        v_links_to_subdivide = defaultdict(set)
+        h_links_to_subdivide = defaultdict(set)
+        for link in vertical_links:
+            for link_prime in horizontal_links:
+                if intersect(link[0], link[1], link_prime[0], link_prime[1]):
+                    point = Point((link[0].x, link_prime[0].y))
+                    v_links_to_subdivide[link].add(point)
+                    h_links_to_subdivide[link_prime].add(point)
+
+        for link in h_links_to_subdivide:
+            points = sorted(h_links_to_subdivide[link], key=lambda p: p.x)
+            self._subdivide(link[0], link[1], points)
+        for link in v_links_to_subdivide:
+            points = sorted(v_links_to_subdivide[link], key=lambda p: p.y)
+            self._subdivide(link[0], link[1], points)
+
+    def _subdivide(self, first_point, last_point, points):
+        """
+        Subdivides the link first_point<->last_point into links
+
+            first_point<->points[0]<->...<->points[-1]<->last_point.
+
+        Assumes `points` are sorted.
+        """
+        self.remove_link(first_point, last_point)
+
+        for point in points:
+            self.add(point)
+
+        if len(points) == 1:
+            self.add_link(first_point, points[0])
+            self.add_link(points[0], last_point)
+            return
+
+        for i, point in enumerate(points):
+            if i == 0:
+                point_before = first_point
+                point_after = points[i + 1]
+            elif i == len(points) - 1:
+                point_before = points[i - 1]
+                point_after = last_point
+            else:
+                point_before = points[i - 1]
+                point_after = points[i + 1]
+            self.add_link(point_before, point)
+            self.add_link(point, point_after)
 
 
 def ccw(a, b, c):
