@@ -75,15 +75,17 @@ class LTNetwork(LTItem):
 
         self.remove_point(old_node)
 
-    def print_links(self):
-        links = set()
+    def links_list(self):
+        links = []
         for point in self.links:
             for link in self.links[point]:
                 if (link, point) not in links and (point, link) not in links:
-                    links.add((point, link))
+                    links.append((point, link))
+        return links
 
+    def print_links(self):
         print('{%s}' % ','.join('{%s,%s}' % ('{%s}' % point, '{%s}' % link)
-                                for point, link in links))
+                                for point, link in self.links_list()))
 
     def print_nodes(self):
         print('{%s}' % ','.join('{%s}' % point for point in self._points))
@@ -177,6 +179,8 @@ class LTNetwork(LTItem):
             if len(self.links[point]) == 2:
                 point1 = list(self.links[point])[0]
                 point2 = list(self.links[point])[1]
+                assert(point1.x == point.x == point2.x or
+                       point1.y == point.y == point2.y)
 
                 self.links[point1].remove(point)
                 self.links[point1].add(point2)
@@ -240,4 +244,42 @@ class LTNetwork(LTItem):
         self._remove_duplicates()
         self._align_nodes()
         self._remove_siblings()
+
+        self.assert_strait_links()
+        self.assert_no_intersections()
+
         return self._get_components()
+
+    def assert_strait_links(self):
+        links = self.links_list()
+        for link in links:
+            assert(link[0].x == link[1].x or link[0].y == link[1].y)
+
+    def assert_no_intersections(self):
+        links = self.links_list()
+        for link in links:
+            for link_prime in links:
+                if intersect(link[0], link[1], link_prime[0], link_prime[1]):
+                    raise Exception(link, link_prime)
+
+
+def ccw(a, b, c):
+    return (c.y - a.y) * (b.x - a.x) > (b.y - a.y) * (c.x - a.x)
+
+
+# Return true if line segments ab and cd intersect
+def intersect(a, b, c, d):
+    # if the intersection is *exactly* on a point, we ignore it.
+    count_x = defaultdict(int)
+    count_y = defaultdict(int)
+    for p in (a, b, c, d):
+        count_x[p.x] += 1
+        count_y[p.y] += 1
+    for x in count_x:
+        if count_x[x] == 3:
+            return False
+    for y in count_y:
+        if count_y[y] == 3:
+            return False
+
+    return ccw(a, c, d) != ccw(b, c, d) and ccw(a, b, c) != ccw(a, b, d)

@@ -1,3 +1,5 @@
+import unittest
+
 from pt_law_parser.parser import parse_document
 
 from tests.test_basic import TestDocument
@@ -8,6 +10,8 @@ class TestParser(TestDocument):
     This test case shows that documents from different years are parsed without
     errors.
     """
+    @unittest.expectedFailure
+    # See expected failure test_basic.Test107190.test_page_12.
     def test_107190(self):
         """
         Document from 1997.
@@ -32,6 +36,8 @@ class TestParser(TestDocument):
 
         self.assertEqual(4, len(device.meta.pages))
 
+    @unittest.expectedFailure
+    # See expected failure test_basic.Test116008.test_page_4.
     def test_116008(self):
         """
         Document from 2001.

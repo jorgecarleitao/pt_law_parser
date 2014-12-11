@@ -152,6 +152,22 @@ class Test0045800458(TestDocument):
         self.assertEqual(18, len(self.device.titles))
 
 
+class Test107190(TestDocument):
+
+    @unittest.expectedFailure
+    # This test fails because it contains a table that is composed of lines that
+    # intersect each other, instead of finishing exactly at the intersection.
+    # todo: fix this by generalizing the LTNetwork for this case.
+    def test_page_12(self):
+        file_name = 'tests/samples/107190.pdf'
+        self._run_test(file_name, [11])
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.12').split('\n'))
+
+        self.assertEqual(11, len(self.device.titles))
+
+
 class Test116008(TestDocument):
     def test_page_2(self):
         file_name = 'tests/samples/116008.pdf'
@@ -161,6 +177,18 @@ class Test116008(TestDocument):
                          self.get_expected(file_name+'.2').split('\n'))
 
         self.assertEqual(11, len(self.device.titles))
+
+    @unittest.expectedFailure
+    # todo: see why this test fails. May be related with Test107190.test_page_12.
+    def test_page_4(self):
+        file_name = 'tests/samples/116008.pdf'
+        self._run_test(file_name, [3])
+
+        # todo: create the file with the expected result.
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.4').split('\n'))
+
+        self.assertEqual(12, len(self.device.titles))
 
 
 class Test118381(TestDocument):
@@ -224,9 +252,6 @@ class Test130252(TestDocument):
         file_name = 'tests/samples/130252.pdf'
         self._run_test(file_name, [7])
 
-        with open('s.html', 'w') as f:
-            f.write(self.device.as_html().encode('utf-8'))
-
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.8').split('\n'))
 
@@ -289,3 +314,29 @@ class Test131371(TestDocument):
 
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.4').split('\n'))
+
+
+class Test135502(TestDocument):
+
+    @unittest.expectedFailure
+    # This test fails because a table in the end of a column is not correctly
+    # added.
+    # todo: fix it by improving how tables are added in the LawComposer.
+    def test_page_8(self):
+        """
+        Page with 3 features:
+        * there is a table in the end of the left column.
+        * some titles are centered in the PDF in an unusual manner.
+        * one table does not contain the bottom border.
+        """
+        file_name = 'tests/samples/135502.pdf'
+        self._run_test(file_name, [7])
+
+        self.assertEqual(19, len(self.device.titles))
+
+        self.assertEqual(8, len(self.device.tables[0].cells))
+        self.assertEqual(6, len(self.device.tables[1].cells))
+        self.assertEqual(6, len(self.device.tables[2].cells))
+
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.8').split('\n'))
