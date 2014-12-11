@@ -255,6 +255,7 @@ class LTNetwork(LTItem):
         self._align_nodes()
 
         self._fix_intersections()
+        self._fix_missing_links()
 
         self._remove_siblings()
 
@@ -302,6 +303,43 @@ class LTNetwork(LTItem):
             points = sorted(v_links_to_subdivide[link], key=lambda p: p.y)
             self._subdivide(link[0], link[1], points)
 
+    def _fix_missing_links(self):
+        """
+        Computes all points that are crossed by a line without a link and
+        subdivides such line to link it with those points.
+        """
+        previous_number_of_points = len(self)
+
+        links = self.links_list()
+
+        vertical_links = [link for link in links if link[0].x == link[1].x]
+        horizontal_links = [link for link in links if link[0].y == link[1].y]
+
+        found_points = dict()
+        for link in horizontal_links:
+            points = [p for p in self if p.y == link[0].y and
+                      link[0].x < p.x < link[1].x]
+            if points:
+                found_points[link] = points
+
+        for link in found_points:
+            points = sorted(found_points[link], key=lambda p: p.x)
+            self._subdivide(link[0], link[1], points)
+
+        found_points = dict()
+        for link in vertical_links:
+            points = [p for p in self if p.x == link[0].x and
+                                  link[0].y < p.y < link[1].y]
+            if points:
+                found_points[link] = points
+
+        for link in found_points:
+            points = sorted(found_points[link], key=lambda p: p.y)
+            self._subdivide(link[0], link[1], points)
+
+        # asserts that we didn't added any new point
+        assert(previous_number_of_points == len(self))
+
     def _subdivide(self, first_point, last_point, points):
         """
         Subdivides the link first_point<->last_point into links
@@ -310,6 +348,7 @@ class LTNetwork(LTItem):
 
         Assumes `points` are sorted.
         """
+        assert(len(points) > 0)
         self.remove_link(first_point, last_point)
 
         for point in points:

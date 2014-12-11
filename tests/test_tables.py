@@ -118,3 +118,20 @@ class TestNetworkIntersections(unittest.TestCase):
 
         self.assertTrue(Point((1, 0)) in network)
         self.assertEqual(network.links[Point((1, 0))], set(points))
+
+    def test_missing_intersection_links(self):
+        points = [Point((0, 0)), Point((2, 0)),
+                  Point((1, -1)), Point((1, 1)), Point((1, 0))]
+
+        network = LTNetwork()
+        for point in points:
+            network.add(point)
+
+        network.add_link(points[0], points[1])
+        network.add_link(points[2], points[3])
+
+        network._fix_missing_links()
+
+        expected = points[:-1]
+        self.assertEqual(network.links[Point((1, 0))],
+                         set(expected))
