@@ -19,28 +19,33 @@ MIDDLE_X1 = (292 + 306.0)/2
 class ConverterParameters(object):
     """
     This class is responsible for providing document-dependent parameters.
+
+    It contains parameters (e.g. citing spaces), and returns them depending on
+    the meta information provided to it.
     """
-    _CITING_SPACE = {2002: 0}
-    _DEFAULT_PARAGRAPH_SPACE = 11.34
-    _PARAGRAPH_SPACE = {2002: (10.668, 21.958, 31.98),
-                        'v2': (_DEFAULT_PARAGRAPH_SPACE, 20.93)}
+    _CITING_SPACE = {None: 11.34,
+                     2002: 0}
+
+    _PARAGRAPH_SPACE = {None: (11.34,),
+                        2002: (10.668, 21.958, 31.98),
+                        'v2': (11.34, 20.93)}
+
+    _CENTER_OFFSET = {None: (1.4,),
+                      'v2': (0,), 2013: (1.4, -5.33)}
 
     def citing_space(self, meta):
         if meta.year in self._CITING_SPACE:
             return self._CITING_SPACE[meta.year]
         else:
-            return 11.34
+            return self._CITING_SPACE[None]
 
     def _paragraph_spaces(self, meta):
-        if meta.version == 1:
-            return [self._DEFAULT_PARAGRAPH_SPACE]
-
         if meta.year in self._PARAGRAPH_SPACE:
             return self._PARAGRAPH_SPACE[meta.year]
         elif 'v%d' % meta.version in self._PARAGRAPH_SPACE:
             return self._PARAGRAPH_SPACE['v%d' % meta.version]
         else:
-            return [self._DEFAULT_PARAGRAPH_SPACE]
+            return self._PARAGRAPH_SPACE[None]
 
     def is_paragraph(self, meta, line, no_paragraph_x0):
         is_paragraph = False
@@ -49,6 +54,24 @@ class ConverterParameters(object):
                 eq(line.x0 - no_paragraph_x0, paragraph_space, 2)
 
         return is_paragraph
+
+    def _center_offsets(self, meta):
+        if meta.year in self._CENTER_OFFSET:
+            return self._CENTER_OFFSET[meta.year]
+        elif 'v%d' % meta.version in self._CENTER_OFFSET:
+            return self._CENTER_OFFSET['v%d' % meta.version]
+        else:
+            return self._CENTER_OFFSET[None]
+
+    def is_column_centered(self, meta, line, center_x):
+        """
+        Checks if line is centered (i.e. a section title, etc.)
+        """
+        is_centered = False
+        for center_offset in self._center_offsets(meta):
+            is_centered = is_centered or \
+                eq(center_x - center_offset, middle_x(line.bbox), 2)
+        return is_centered
 
 
 class LawConverter(PDFLayoutAnalyzer):
@@ -100,14 +123,6 @@ class LawConverter(PDFLayoutAnalyzer):
     def result(self):
         return self._result_lines
 
-    @property
-    def center_offset(self):
-        if self.meta.version == 1:
-            # titles are not exactly on columns center. Obtained by testing.
-            return 1.4
-        elif self.meta.version == 2:
-            return 0
-
     def is_paragraph(self, line, column):
         """
         Checks if line is a new paragraph
@@ -146,8 +161,8 @@ class LawConverter(PDFLayoutAnalyzer):
         """
         Checks if line is centered (i.e. a section title, etc.)
         """
-        return eq(middle_x(column.bbox) - self.center_offset + self.citing_space,
-                  middle_x(line.bbox), 2)
+        center_x = middle_x(column.bbox) + self.citing_space
+        return self._parameters.is_column_centered(self.meta, line, center_x)
 
     def is_full_width(self, line, column):
         return eq(line.width + self.citing_space, column.width, 3)
@@ -347,6 +362,11 @@ class LawConverter(PDFLayoutAnalyzer):
                 self._is_citing = False
 
             self.previous_line = line
+
+        # if missing tables are aligned with column, write them now.
+        for table in self._tables:
+            if table.hoverlap(column) and table.voverlap(column):
+                self.add_table(table)
 
     def is_starting_cite(self, line, column):
         return not self.is_full_width(line, column) and \

@@ -318,10 +318,6 @@ class Test131371(TestDocument):
 
 class Test135502(TestDocument):
 
-    @unittest.expectedFailure
-    # This test fails because a table in the end of a column is not correctly
-    # added.
-    # todo: fix it by improving how tables are added in the LawComposer.
     def test_page_8(self):
         """
         Page with 3 features:
