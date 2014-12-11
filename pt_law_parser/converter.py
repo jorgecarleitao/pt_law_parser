@@ -454,8 +454,16 @@ class LAOrganizer(LAParams):
         """
         Returns the y of the line that ends the last page.
         """
+        rectangles = [item for item in items if isinstance(item, LTRect)]
         lines = [item for item in items if isinstance(item, LTLine)]
         lines.sort(key=lambda item: item.y0)
+        rectangles.sort(key=lambda item: item.y0)
+
+        # documents from 2012-2014 have a single thicker line.
+        if lines and rectangles and \
+                lines[0].linewidth == 1 and lines[0].x0 == rectangles[0].x0 and\
+                lines[0].x1 == rectangles[0].x1:
+            return lines[0].y0
 
         if len(lines) >= 2 and LawConverter.is_page_centered(lines[1]) and \
                 lines[0].x0 > MIDDLE_X1:

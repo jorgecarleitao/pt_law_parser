@@ -82,6 +82,13 @@ class TestDocEnd(TestDocument):
         # the contains only 4 paragraphs.
         self.assertEqual(4, len(self.device.result))
 
+    def test_133880(self):
+        file_name = 'tests/samples/133880.pdf'
+        self._run_test(file_name, [15])
+
+        self.assertEqual(0, len(self.device.titles))
+        self.assertTrue(self.device.result[-1].as_html().startswith('<table>'))
+
     def test_107190_empty_page(self):
         file_name = 'tests/samples/107190.pdf'
         self._run_test(file_name, [14])
@@ -92,6 +99,13 @@ class TestDocEnd(TestDocument):
     def test_107190(self):
         file_name = 'tests/samples/107190.pdf'
         self._run_test(file_name, [15])
+
+        self.assertEqual(0, len(self.device.titles))
+        self.assertEqual(0, len(self.device.result))
+
+    def test_137056(self):
+        file_name = 'tests/samples/137056.pdf'
+        self._run_test(file_name, [5])
 
         self.assertEqual(0, len(self.device.titles))
         self.assertEqual(0, len(self.device.result))
