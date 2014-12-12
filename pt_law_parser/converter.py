@@ -1,5 +1,6 @@
 # coding=utf-8
-from pdfminer.layout import LTTextGroup, LAParams, LTLine, LTRect, LTFigure
+from pdfminer.layout import LTTextGroup, LAParams, LTLine, LTRect, LTFigure, \
+    LTTextBox
 from pdfminer.converter import PDFLayoutAnalyzer
 from pdfminer.utils import apply_matrix_pt
 
@@ -259,23 +260,49 @@ class LawConverter(PDFLayoutAnalyzer):
             else:
                 self.merge(line)
 
+    @staticmethod
+    def _last_page_limit(items):
+        """
+        Computes the y that separates irrelevant content of the last page from
+        relevant one.
+        """
+        rectangles = [item for item in items if isinstance(item, LTRect)]
+        lines = [item for item in items if isinstance(item, LTLine)]
+        lines.sort(key=lambda item: item.y0)
+        rectangles.sort(key=lambda item: item.y0)
+
+        # documents from 2012-2014 have a single thicker line.
+        if lines and rectangles and \
+                lines[0].linewidth == 1 and lines[0].x0 == rectangles[0].x0 and\
+                lines[0].x1 == rectangles[0].x1:
+            return lines[0].y0
+
+        if len(lines) >= 2 and crosses_middle(lines[1]) and \
+                lines[0].x0 > MIDDLE_X1:
+            return lines[1].y0
+        # documents from 1997
+        elif len(rectangles) > 1 and eq(rectangles[1].y1, 381.590, 2):
+            return 381.590
+        else:
+            return 0
+
     def _is_summary_page(self, items):
         # todo: this is too broad. Make it more restrict.
+        items = [item for item in items if isinstance(item, (LTRect, LTLine))]
+        items = sorted(items, key=lambda x: (x.x0, x.y0))
         rectangles = [item for item in items if isinstance(item, LTRect)]
+
+        if not rectangles:
+            return False
 
         for rectangle in rectangles:
             # if is centered but not on the bottom of the page.
             if self.is_page_centered(rectangle) and not rectangle.y1 < 80:
                 return True
 
-        if not rectangles:
+        # summary page always contains items
+        if len(items) <= 1:
             return False
-
-        if len(items) <= 3:
-            return False
-
-        # ignore header and 2 columns.
-        items = list(sorted(items[3:], key=lambda x: (x.x0, x.y0)))
 
         if not isinstance(items[0], LTRect):
             return False
@@ -283,18 +310,18 @@ class LawConverter(PDFLayoutAnalyzer):
         if isinstance(items[1], LTRect):
             items.pop(1)
 
-        # situation where we have a left-rectangle, summary
+        # situation where we have a left-rectangle in summary page
         if eq(items[0].x0, 50, 2) and eq(items[0].x1, 169.512, 2):
             return True
         else:
             return False
 
-    def _create_tables(self, ltpage):
+    def _create_tables(self, items):
         self._tables = []
         _network = LTNetwork()
 
         # merge all LTNetworks in a single network _network.
-        for item in ltpage:
+        for item in items:
             if isinstance(item, LTNetwork):
                 for point in item.points:
                     _network.add(point)
@@ -312,26 +339,65 @@ class LawConverter(PDFLayoutAnalyzer):
             except Table.EmptyTableError:
                 pass
 
-    def receive_layout(self, ltpage):
+    def _build_components(self, lines, header_min_y, last_page_limit):
+        header = LTTextHeader()
+        left_column = LTTextColumn()
+        right_column = LTTextColumn()
 
-        # checks if we are in a summary page
-        items = [item for item in ltpage if not isinstance(item, LTNetwork)]
+        for line in lines:
+            assert(line._objs[-1].get_text() == '\n')
+            line._objs = line._objs[:-1]  # remove '\n' char from line.
+
+            # add lines to header.
+            if line.y0 > header_min_y - 5:
+                header.add(line)
+                continue
+
+            # ignores lines below the end
+            if line.y0 <= last_page_limit:
+                continue
+
+            if line.x0 < MIDDLE_X1:
+                left_column.add(line)
+            else:
+                right_column.add(line)
+
+        # sort lines inside components
+        header.analyze(None)
+        left_column.analyze(None)
+        right_column.analyze(None)
+        return header, left_column, right_column
+
+    def receive_layout(self, ltpage):
+        if not len(ltpage) or not isinstance(ltpage[0], LTTextBox):
+            # No text => ignore.
+            return
+        lines = ltpage[0]
+        items = ltpage[1:]
+
+        # summary page => ignore.
         if self._is_summary_page(items):
             return
 
-        # empty page (no header or empty left column)
-        if len(ltpage) < 3 or not isinstance(ltpage[0], LTTextHeader) or \
-                not len(ltpage[1]):
+        # the y0 which defines the limit of content of a last page
+        last_page_limit = self._last_page_limit(items)
+
+        header_min_y = lines[0].y0
+
+        # header is below the last page limit => empty last page => ignore.
+        if last_page_limit > header_min_y:
             return
 
-        self._images = [SimpleImage(item[0]) for item in ltpage
+        self._images = [SimpleImage(item[0]) for item in items
                         if isinstance(item, LTFigure)]
+        self._create_tables(items)
 
-        self._create_tables(ltpage)
+        header, left_column, right_column = \
+            self._build_components(lines, header_min_y, last_page_limit)
 
-        header = ltpage[0]
-        left_column = ltpage[1]
-        right_column = ltpage[2]
+        if len(left_column) == 0:
+            # Page with no content => ignore.
+            return
 
         self.meta.parse_header(header)
         self._parse_column(left_column)
@@ -445,56 +511,11 @@ class LAOrganizer(LAParams):
         LAParams.__init__(self, line_overlap=0.25, line_margin=0.1, boxes_flow=0,
                           char_margin=2)
 
-    @staticmethod
-    def _last_page_limit(items):
-        """
-        Returns the y of the line that ends the last page.
-        """
-        rectangles = [item for item in items if isinstance(item, LTRect)]
-        lines = [item for item in items if isinstance(item, LTLine)]
-        lines.sort(key=lambda item: item.y0)
-        rectangles.sort(key=lambda item: item.y0)
-
-        # documents from 2012-2014 have a single thicker line.
-        if lines and rectangles and \
-                lines[0].linewidth == 1 and lines[0].x0 == rectangles[0].x0 and\
-                lines[0].x1 == rectangles[0].x1:
-            return lines[0].y0
-
-        if len(lines) >= 2 and crosses_middle(lines[1]) and \
-                lines[0].x0 > MIDDLE_X1:
-            return lines[1].y0
-        # documents from 1997
-        elif rectangles and len(lines) >= 4 and crosses_middle(lines[3]) and \
-                lines[0].x0 < MIDDLE_X1 and lines[1].x0 < MIDDLE_X1:
-            return lines[2].y0
-        else:
-            return 0
-
     def group_textlines(self, bbox, lines, other_objs):
-        header = LTTextHeader()
-        left_column = LTTextColumn()
-        right_column = LTTextColumn()
-
-        header_min_y = lines[0].y0 - 5
-
-        last_page_limit = self._last_page_limit(other_objs)
-
+        box = LTTextBox()
         for line in lines:
-            if line.y0 > header_min_y:
-                header.add(line)
-                continue
-
-            # ignores lines below the end
-            if line.y0 <= last_page_limit:
-                continue
-
-            if line.x0 < MIDDLE_X1:
-                left_column.add(line)
-            else:
-                right_column.add(line)
-
-        return [header, left_column, right_column]
+            box.add(line)
+        return [box]
 
     def group_textboxes(self, bbox, boxes, other_objs):
         group = LTTextGroup(boxes)

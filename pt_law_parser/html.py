@@ -297,7 +297,7 @@ class Table(LTComponent):
                        cell.x0 < column + 0.1 < cell.x1:
                         elements[cell_index].add(row, column)
 
-        return elements
+        return sorted(elements, key=lambda e: (e.cell.x0, e.cell.y0))
 
     @property
     def cells(self):
