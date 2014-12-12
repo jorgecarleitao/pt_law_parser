@@ -60,22 +60,6 @@ class TestParser(TestDocument):
 
         self.assertEqual(18, len(device.meta.pages))
 
-    def test_131288(self):
-        """
-        Document from 2010 with two summary pages.
-        """
-        device = parse_document('tests/samples/131288.pdf')
-
-        self.assertEqual(9, len(device.meta.pages))
-
-    def test_131371(self):
-        """
-        Document from 2010 with content in last page.
-        """
-        device = parse_document('tests/samples/131371.pdf')
-
-        self.assertEqual(4, len(device.meta.pages))
-
     def test_131869(self):
         """
         Document from 2011.

@@ -39,12 +39,6 @@ class TestDocStart(TestDocument):
 
         self.assertEqual(self.device.result, [])
 
-    def test_131288(self):
-        file_name = 'tests/samples/131288.pdf'
-        self._run_test(file_name, [0])
-
-        self.assertEqual(self.device.result, [])
-
     def test_131371(self):
         file_name = 'tests/samples/131371.pdf'
         self._run_test(file_name, [0, 1])
