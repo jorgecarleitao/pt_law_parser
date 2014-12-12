@@ -474,7 +474,7 @@ class LAOrganizer(LAParams):
                 lines[0].x0 > MIDDLE_X1:
             return lines[1].y0
         # documents from 1997
-        elif len(lines) >= 4 and crosses_middle(lines[3]) and \
+        elif rectangles and len(lines) >= 4 and crosses_middle(lines[3]) and \
                 lines[0].x0 < MIDDLE_X1 and lines[1].x0 < MIDDLE_X1:
             return lines[2].y0
         else:

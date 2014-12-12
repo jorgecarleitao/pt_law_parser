@@ -194,16 +194,15 @@ class Test116008(TestDocument):
 
         self.assertEqual(11, len(self.device.titles))
 
-    @unittest.expectedFailure
-    # todo: Some text is missing.
     def test_page_4(self):
         file_name = 'tests/samples/116008.pdf'
         self._run_test(file_name, [3])
 
-        #self.assertEqual(self.device.as_html().split('\n'),
-        #                 self.get_expected(file_name+'.4').split('\n'))
+        self.assertEqual(self.device.as_html().split('\n'),
+                         self.get_expected(file_name+'.4').split('\n'))
 
         self.assertEqual(12, len(self.device.titles))
+        self.assertEqual(3, len(self.device.tables))
 
     @unittest.expectedFailure
     # todo: Fix order of appearance of table and right column.
