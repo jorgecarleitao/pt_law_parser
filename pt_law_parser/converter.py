@@ -27,6 +27,7 @@ class ConverterParameters(object):
     It contains parameters (e.g. citing spaces), and returns them depending on
     the meta information provided to it.
     """
+    # None represents the default value.
     _CITING_SPACE = {None: 11.34,
                      2002: 0}
 
@@ -38,19 +39,23 @@ class ConverterParameters(object):
     _CENTER_OFFSET = {None: (1.4,),
                       'v2': (0,), 2013: (1.4, -5.33)}
 
-    def citing_space(self, meta):
-        if meta.year in self._CITING_SPACE:
-            return self._CITING_SPACE[meta.year]
+    @staticmethod
+    def _get_parameters(meta, parameters_dict):
+        """
+        Internal method that maps a meta into a specific list of parameters
+        """
+        if meta.year in parameters_dict:
+            return parameters_dict[meta.year]
+        elif 'v%d' % meta.version in parameters_dict:
+            return parameters_dict['v%d' % meta.version]
         else:
-            return self._CITING_SPACE[None]
+            return parameters_dict[None]
+
+    def citing_space(self, meta):
+        return self._get_parameters(meta, self._CITING_SPACE)
 
     def _paragraph_spaces(self, meta):
-        if meta.year in self._PARAGRAPH_SPACE:
-            return self._PARAGRAPH_SPACE[meta.year]
-        elif 'v%d' % meta.version in self._PARAGRAPH_SPACE:
-            return self._PARAGRAPH_SPACE['v%d' % meta.version]
-        else:
-            return self._PARAGRAPH_SPACE[None]
+        return self._get_parameters(meta, self._PARAGRAPH_SPACE)
 
     def is_paragraph(self, meta, line, no_paragraph_x0):
         is_paragraph = False
@@ -61,12 +66,7 @@ class ConverterParameters(object):
         return is_paragraph
 
     def _center_offsets(self, meta):
-        if meta.year in self._CENTER_OFFSET:
-            return self._CENTER_OFFSET[meta.year]
-        elif 'v%d' % meta.version in self._CENTER_OFFSET:
-            return self._CENTER_OFFSET['v%d' % meta.version]
-        else:
-            return self._CENTER_OFFSET[None]
+        return self._get_parameters(meta, self._CENTER_OFFSET)
 
     def is_column_centered(self, meta, line, center_x):
         """
