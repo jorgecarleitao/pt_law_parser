@@ -1,6 +1,5 @@
 # coding=utf-8
-from pdfminer.layout import LTContainer, LTTextGroup, LAParams, LTLine, LTRect, \
-    LTFigure
+from pdfminer.layout import LTTextGroup, LAParams, LTLine, LTRect, LTFigure
 from pdfminer.converter import PDFLayoutAnalyzer
 from pdfminer.utils import apply_matrix_pt
 
@@ -294,22 +293,14 @@ class LawConverter(PDFLayoutAnalyzer):
         self._tables = []
         _network = LTNetwork()
 
-        def merge_networks(item):
-            """
-            Recursively merges all `LTNetwork` instances into a single
-            `LTNetwork`, `_network`.
-            """
+        # merge all LTNetworks in a single network _network.
+        for item in ltpage:
             if isinstance(item, LTNetwork):
                 for point in item.points:
                     _network.add(point)
                     for link in item.links[point]:
                         _network.add(link)
                         _network.add_link(point, link)
-            if isinstance(item, LTContainer):
-                for child in item:
-                    merge_networks(child)
-
-        merge_networks(ltpage)
 
         networks = _network.create_components()
 
