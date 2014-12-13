@@ -79,6 +79,7 @@ class LawConverter(PDFLayoutAnalyzer):
         # attributes result of the parsing
         self.meta = Meta()
         self._titles = []
+        self._all_tables = []
 
         # intermediary results
         self._result_lines = []
@@ -97,7 +98,7 @@ class LawConverter(PDFLayoutAnalyzer):
 
     @property
     def tables(self):
-        return self._tables
+        return self._all_tables
 
     def as_html(self):
 
@@ -296,6 +297,7 @@ class LawConverter(PDFLayoutAnalyzer):
             try:
                 table = Table(network)
                 self._tables.append(table)
+                self._all_tables.append(table)
             except Table.EmptyTableError:
                 pass
 
