@@ -1,12 +1,12 @@
 from collections import defaultdict
 from math import ceil
 
-from pdfminer.layout import LTTextBox, LTItem
+from pdfminer.layout import LTExpandableContainer, LTTextBox, LTItem
 
 from pt_law_parser.point import Point
 
 
-class LTTextColumn(LTTextBox):
+class LTTextColumn(LTExpandableContainer):
 
     def analyze(self, laparams):
         # sort object up to down, and then by left to right
@@ -14,8 +14,14 @@ class LTTextColumn(LTTextBox):
                             key=lambda obj: (ceil(obj.y0), ceil(obj.x0)),
                             reverse=True)
 
+    def expand_left(self, x0):
+        self._bbox = (min(self.x0, x0), self.y0, self.x1, self.y1)
 
-class LTTextHeader(LTTextBox):
+    def expand_right(self, x1):
+        self._bbox = (self.x0, self.y0, max(self.x1, x1), self.y1)
+
+
+class LTTextHeader(LTExpandableContainer):
 
     def analyze(self, laparams):
         # sort object left to right and then up to down

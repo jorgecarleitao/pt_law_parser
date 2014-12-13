@@ -174,6 +174,18 @@ class Test107190(TestDocument):
 
         self.assertEqual(14, len(self.device.titles))
 
+    def test_page_5(self):
+        """
+        Page with a complex column organization.
+        """
+        file_name = 'tests/samples/107190.pdf'
+        self._run_test(file_name, [4])
+
+        self.assertEqual(3, len(self.device.tables))
+        self.assertEqual(5, len(self.device.titles))
+
+        # todo: this page is not correctly parsed. Improve it.
+
     def test_page_12(self):
         file_name = 'tests/samples/107190.pdf'
         self._run_test(file_name, [11])
@@ -204,17 +216,14 @@ class Test116008(TestDocument):
         self.assertEqual(12, len(self.device.titles))
         self.assertEqual(3, len(self.device.tables))
 
-    @unittest.expectedFailure
-    # todo: Fix order of appearance of table and right column.
     def test_page_8(self):
         file_name = 'tests/samples/116008.pdf'
         self._run_test(file_name, [7])
 
-        self._print_result()
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.8').split('\n'))
 
-        self.assertEqual(15, len(self.device.titles))
+        self.assertEqual(17, len(self.device.titles))
 
 
 class Test118381(TestDocument):
@@ -362,3 +371,12 @@ class Test135502(TestDocument):
 
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.8').split('\n'))
+
+    def test_page_13(self):
+        """
+        Page with two images and no text.
+        """
+        file_name = 'tests/samples/135502.pdf'
+        self._run_test(file_name, [12])
+
+        self.assertEqual(0, len(self.device.titles))

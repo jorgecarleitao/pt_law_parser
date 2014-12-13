@@ -36,9 +36,6 @@ class ConverterParameters(object):
                         2002: (10.668, 21.958, 31.98),
                         'v2': (11.34, 6.123, 8.1992, 20.93)}
 
-    _CENTER_OFFSET = {None: (1.4,),
-                      'v2': (0,), 2013: (1.4, -5.33)}
-
     @staticmethod
     def _get_parameters(meta, parameters_dict):
         """
@@ -64,19 +61,6 @@ class ConverterParameters(object):
                 eq(line.x0 - no_paragraph_x0, paragraph_space, 2)
 
         return is_paragraph
-
-    def _center_offsets(self, meta):
-        return self._get_parameters(meta, self._CENTER_OFFSET)
-
-    def is_column_centered(self, meta, line, center_x):
-        """
-        Checks if line is centered (i.e. a section title, etc.)
-        """
-        is_centered = False
-        for center_offset in self._center_offsets(meta):
-            is_centered = is_centered or \
-                eq(center_x - center_offset, middle_x(line.bbox), 2)
-        return is_centered
 
 
 class LawConverter(PDFLayoutAnalyzer):
@@ -167,10 +151,10 @@ class LawConverter(PDFLayoutAnalyzer):
         Checks if line is centered (i.e. a section title, etc.)
         """
         center_x = middle_x(column.bbox) + self.citing_space
-        return self._parameters.is_column_centered(self.meta, line, center_x)
+        return eq(center_x, middle_x(line.bbox), 2)
 
     def is_full_width(self, line, column):
-        return eq(line.width + self.citing_space, column.width, 3)
+        return eq(line.width + self.citing_space, column.width, 4)
 
     def is_title(self, line, column):
         is_full_width = self.is_full_width(line, column)
@@ -207,33 +191,7 @@ class LawConverter(PDFLayoutAnalyzer):
     def _parse_line(self, line, column):
         # todo: parse italics inside sentences
 
-        # ignores empty lines, a by-product of the PDFMiner.
-        if line.get_text().replace(' ', '') == '':
-            return
-
-        # check if text is inside table.
-        for table in self._tables:
-            if table.hoverlap(line) and table.voverlap(line):
-                table.add(line)
-                return
-            elif line.y0 < table.y0 and table.hoverlap(line) and \
-                    not table.voverlap(line):
-                self.add_table(table)
-
-        # check if there is an image that we need to add.
-        for image in self._images:
-            if line.y0 < image.y0 and image.hoverlap(line) and \
-                    not image.voverlap(line):
-                self.add_image(image)
-
-        if self.is_page_centered(line):
-            # is only a title if not a normal line in a full page
-            # (which we test since the text belongs to the left column)
-            if self.is_paragraph(line, column):
-                self.add_paragraph(line)
-            else:
-                self.add_header(line)
-        elif line == self.previous_line:
+        if line == self.previous_line:
             if self.is_title(line, column):
                 self.add_header(line)
             else:
@@ -243,12 +201,11 @@ class LawConverter(PDFLayoutAnalyzer):
             self.add_header(line)
 
         elif self.is_title(line, column):
-            is_column_jump = self.previous_line.x1 < MIDDLE_X1 < line.x1
-            is_page_jump = line.x1 < MIDDLE_X1 < self.previous_line.x1
+            is_column_jump = self.previous_line not in column
 
             if self.is_title(self.previous_line, column) and \
                     self.previous_line.y0 - line.y1 < 0 and not \
-                    (is_column_jump or is_page_jump):
+                    is_column_jump:
                 self.merge(line)
             else:
                 self.add_header(line)
@@ -341,32 +298,86 @@ class LawConverter(PDFLayoutAnalyzer):
 
     def _build_components(self, lines, header_min_y, last_page_limit):
         header = LTTextHeader()
+        center_column = LTTextColumn()
         left_column = LTTextColumn()
         right_column = LTTextColumn()
 
+        def add_to_column(item):
+            if item.y0 <= last_page_limit:
+                pass  # ignores lines below the end
+            elif item.x0 < item.x1 < MIDDLE_X1:
+                left_column.add(item)
+            elif MIDDLE_X1 < item.x0 < item.x1:
+                right_column.add(item)
+            else:
+                center_column.add(item)
+            left_column.expand_left(item.x0)
+            right_column.expand_right(item.x1)
+
+        def in_table(line):
+            # check if text is inside table.
+            for table in self._tables:
+                if table.hoverlap(line) and table.voverlap(line):
+                    table.add(line)
+                    return True
+            return False
+
+        # add the tables to respective columns
+        for table in self._tables:
+            add_to_column(table)
+
+        previous_line = None
         for line in lines:
             assert(line._objs[-1].get_text() == '\n')
             line._objs = line._objs[:-1]  # remove '\n' char from line.
 
-            # add lines to header.
-            if line.y0 > header_min_y - 5:
+            # ignores empty lines, a by-product of the PDFMiner.
+            if line.get_text().replace(' ', '') == '':
+                continue
+
+            if line.y0 > header_min_y - 5:  # -5: a small margin for variations
                 header.add(line)
-                continue
-
-            # ignores lines below the end
-            if line.y0 <= last_page_limit:
-                continue
-
-            if line.x0 < MIDDLE_X1:
-                left_column.add(line)
+            elif line.y0 <= last_page_limit:
+                pass  # ignores lines below the end
+            elif in_table(line):
+                pass
             else:
-                right_column.add(line)
+                if line.x0 < line.x1 < MIDDLE_X1:
 
-        # sort lines inside components
+                    is_below = len(left_column) and len(center_column)
+                    is_below = is_below and \
+                        left_column.y0 > center_column.y0 > line.y0
+
+                    # a line that is in center column, but finishes before
+                    # MIDDLE_X1; OR a line already inside the center column; OR
+                    # left_column is above center which is above line.
+                    if previous_line in center_column and \
+                            previous_line.y0 - line.y1 < 0 or \
+                            center_column.voverlap(line) and \
+                            center_column.hoverlap(line) or \
+                            is_below:
+                        center_column.add(line)
+                    else:
+                        left_column.add(line)
+                elif MIDDLE_X1 < line.x0 < line.x1:
+                    right_column.add(line)
+                else:
+                    center_column.add(line)
+            previous_line = line
+
+        # add images to respective columns
+        for image in self._images:
+            add_to_column(image)
+
+        if len(center_column) and len(left_column):
+            assert(not (center_column.voverlap(left_column) and
+                   center_column.hoverlap(left_column)))
+        # sort inside inside components
         header.analyze(None)
         left_column.analyze(None)
         right_column.analyze(None)
-        return header, left_column, right_column
+        center_column.analyze(None)
+        return header, center_column, left_column, right_column
 
     def receive_layout(self, ltpage):
         if not len(ltpage) or not isinstance(ltpage[0], LTTextBox):
@@ -392,23 +403,37 @@ class LawConverter(PDFLayoutAnalyzer):
                         if isinstance(item, LTFigure)]
         self._create_tables(items)
 
-        header, left_column, right_column = \
+        header, center_column, left_column, right_column = \
             self._build_components(lines, header_min_y, last_page_limit)
 
-        if len(left_column) == 0:
+        if len(left_column) == 0 and len(center_column) == 0:
             # Page with no content => ignore.
             return
 
         self.meta.parse_header(header)
-        self._parse_column(left_column)
-        self._parse_column(right_column)
 
-        # if tables are in the end of the page, write them now.
-        for table in self._tables:
-            self.add_table(table)
+        if center_column.y0 < left_column.y0:
+            c1 = left_column
+            c2 = right_column
+            c3 = center_column
+        else:
+            c1 = center_column
+            c2 = left_column
+            c3 = right_column
+
+        self._parse_column(c1)
+        self._parse_column(c2)
+        self._parse_column(c3)
 
     def _parse_column(self, column):
         for line in column:
+            if isinstance(line, Table):
+                self.add_table(line)
+                continue
+            if isinstance(line, SimpleImage):
+                self.add_image(line)
+                continue
+
             if self.previous_line is None:  # if first item
                 self.previous_line = line
 
@@ -424,11 +449,6 @@ class LawConverter(PDFLayoutAnalyzer):
                 self._is_citing = False
 
             self.previous_line = line
-
-        # if missing tables are aligned with column, write them now.
-        for table in self._tables:
-            if table.hoverlap(column) and table.voverlap(column):
-                self.add_table(table)
 
     def is_starting_cite(self, line, column):
         return not self.is_full_width(line, column) and \
