@@ -84,7 +84,13 @@ class Table(LTComponent):
             Adds a line to the cell assuming a bounding box bbox.
             """
             # todo: this code is similar to _parse_line. Common implementation?
-            line = Line(item.get_text().replace(' .', ''))
+            def remove_dots(text):
+                return text.replace(' .', '')
+
+            text = remove_dots(item.get_text())
+            if text == '.':
+                return
+            line = Line(text)
 
             if not self._lines:
                 # cell is empty
