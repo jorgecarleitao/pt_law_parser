@@ -1,7 +1,7 @@
 from collections import defaultdict
 from math import ceil
 
-from pdfminer.layout import LTExpandableContainer, LTTextBox, LTItem
+from pdfminer.layout import LTExpandableContainer, LTItem
 
 from pt_law_parser.point import Point
 
