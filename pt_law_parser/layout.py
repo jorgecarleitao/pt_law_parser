@@ -178,11 +178,11 @@ class LTNetwork(LTItem):
                     else:
                         replace_y[y_prime] = y
 
-        for point in self:
+        for point in list(self)[:]:
             if point.x in replace_x:
                 self.replace(point, Point((replace_x[point.x], point.y)))
 
-        for point in self:
+        for point in list(self)[:]:
             if point.y in replace_y:
                 self.replace(point, Point((point.x, replace_y[point.y])))
 

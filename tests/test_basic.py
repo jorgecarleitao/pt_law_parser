@@ -225,6 +225,12 @@ class Test116008(TestDocument):
 
         self.assertEqual(17, len(self.device.titles))
 
+    def test_page_9(self):
+        file_name = 'tests/samples/116008.pdf'
+        self._run_test(file_name, [8])
+
+        self.assertEqual(8, len(self.device.titles))
+
 
 class Test118381(TestDocument):
     def test_page_2(self):

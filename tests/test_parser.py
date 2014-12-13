@@ -34,8 +34,6 @@ class TestParser(TestDocument):
 
         self.assertEqual(4, len(device.meta.pages))
 
-    @unittest.expectedFailure
-    # todo: see why this crashes, but test_basic.Test116008.page_8 doesn't.
     def test_116008(self):
         """
         Document from 2001.
