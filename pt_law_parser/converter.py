@@ -32,9 +32,12 @@ class ConverterParameters(object):
                      2002: 0}
 
     # (8.1992, 6.123) => small letters have smaller paragraph space.
-    _PARAGRAPH_SPACE = {None: (11.34, 8.1992),
+    _PARAGRAPH_SPACE = {None: (11.34,),
+                        # (21.958, 31.98) -> line advances by bullets
                         2002: (10.668, 21.958, 31.98),
-                        'v2': (11.34, 6.123, 8.1992, 20.93)}
+                        # (8.1992) -> line advance in paragraph of center column.
+                        # (20.93) -> line advance by bullets
+                        'v2': (11.34, 8.1992, 20.93)}
 
     @staticmethod
     def _get_parameters(meta, parameters_dict):
