@@ -18,6 +18,9 @@ class TestParser(TestDocument):
 
         self.assertEqual(13, len(device.meta.pages))
 
+        self.assertEqual(14 + 13 + 4 + 5 + 0 + 0 + 2 + 0 + 5 + 21 + 6 + 18 + 8,
+                         len(device.titles))
+
     def test_108839(self):
         """
         Document from 1998.
@@ -26,6 +29,11 @@ class TestParser(TestDocument):
 
         self.assertEqual(27, len(device.meta.pages))
 
+        self.assertEqual(4 + 14 + 12 + 12 + 16 + 18 + 16 + 21 + 16 + 16 + 20 +
+                         16 + 16 + 20 + 12 + 12 + 18 + 18 + 22 + 24 + 6 + 24 +
+                         20 + 16 + 23 + 26 + 22,
+                         len(device.titles))
+
     def test_113604(self):
         """
         Document from 2000.
@@ -33,6 +41,8 @@ class TestParser(TestDocument):
         device = parse_document('tests/samples/113604.pdf')
 
         self.assertEqual(4, len(device.meta.pages))
+
+        self.assertEqual(15 + 2 + 3, len(device.titles))
 
     @unittest.expectedFailure
     # See expected failure of test_basic.Test116008.test_page_6.
@@ -99,7 +109,7 @@ class TestParser(TestDocument):
         self.assertEqual(25, len(device.meta.pages))
 
         expected = 14 + 14 + 10 + 7 + 19 + 17 + 1 + 4 + 7 + 10 + 17 + 14 + 16 +\
-                   22 + 14 + 12 + 23 + 18 + 14 + 25 + 14 + 16 + 26
+            22 + 14 + 12 + 23 + 18 + 14 + 25 + 14 + 16 + 26
         # See test_basic.Test135502 for why this fails.
         self.assertEqual(expected, len(device.titles))
 

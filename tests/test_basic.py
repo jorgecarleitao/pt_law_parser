@@ -125,7 +125,7 @@ class Test0272602741(TestDocument):
         file_name = 'tests/samples/0272602741.pdf'
 
         self.device._is_citing = True
-        self._run_test(file_name, [4])
+        self._run_test(file_name, [1])
 
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.2').split('\n'))
@@ -170,8 +170,6 @@ class Test0045800458(TestDocument):
 
 class Test107190(TestDocument):
 
-    @unittest.expectedFailure
-    # todo: paragraph with extreme space looks like a title. Catch it.
     def test_page_2(self):
         file_name = 'tests/samples/107190.pdf'
         self._run_test(file_name, [1])
@@ -190,8 +188,6 @@ class Test107190(TestDocument):
 
         self.assertEqual(3, len(self.device.tables))
         self.assertEqual(5, len(self.device.titles))
-
-        # todo: this page is not correctly parsed. Improve it.
 
     def test_page_7(self):
         file_name = 'tests/samples/107190.pdf'
@@ -235,7 +231,21 @@ class Test108839(TestDocument):
         self.assertEqual(21, len(self.device.titles))
 
 
+class Test113604(TestDocument):
+    @unittest.expectedFailure
+    # It identifies extra paragraphs corresponding to two sub-lines.
+    # todo: distinguish them.
+    def test_page_3(self):
+        file_name = 'tests/samples/113604.pdf'
+        self._run_test(file_name, [2])
+
+        self.assertEqual(15, len(self.device.titles))
+        self.assertEqual(36, len(self.device.paragraphs))
+
+
 class Test116008(TestDocument):
+    @unittest.expectedFailure
+    # Same as Test113604.test_page_3
     def test_page_2(self):
         file_name = 'tests/samples/116008.pdf'
         self._run_test(file_name, [1])
