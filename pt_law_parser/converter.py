@@ -29,15 +29,23 @@ class ConverterParameters(object):
     """
     # None represents the default value.
     _CITING_SPACE = {None: 11.34,
-                     2002: 0}
+                     2002: 0,
+                     1998: 0}
 
-    # (8.1992, 6.123) => small letters have smaller paragraph space.
     _PARAGRAPH_SPACE = {None: (11.34,),
-                        # (21.958, 31.98) -> line advances by bullets
-                        2002: (10.668, 21.958, 31.98),
+                        2002: (10.668,),
                         # (8.1992) -> line advance in paragraph of center column.
-                        # (20.93) -> line advance by bullets
-                        'v2': (11.34, 8.1992, 20.93)}
+                        1997: (11.34, 8.2),
+                        'v2': (11.34,)}
+
+    # space created by bullets.
+    _SUBPARAGRAPH_SPACE = {None: tuple(),
+                           2002: (16.96, 21.958, 31.98),
+                           'v2': (20.93,)}
+
+    _SUB_LINE_SPACE = {None: tuple(),
+                       2002: (29.48, 34.843),
+                       'v2': (34.844,)}
 
     @staticmethod
     def _get_parameters(meta, parameters_dict):
@@ -55,7 +63,8 @@ class ConverterParameters(object):
         return self._get_parameters(meta, self._CITING_SPACE)
 
     def _paragraph_spaces(self, meta):
-        return self._get_parameters(meta, self._PARAGRAPH_SPACE)
+        return self._get_parameters(meta, self._PARAGRAPH_SPACE) +\
+            self._get_parameters(meta, self._SUBPARAGRAPH_SPACE)
 
     def is_paragraph(self, meta, line, no_paragraph_x0):
         is_paragraph = False
@@ -64,6 +73,54 @@ class ConverterParameters(object):
                 eq(line.x0 - no_paragraph_x0, paragraph_space, 2)
 
         return is_paragraph
+
+    def is_subparagraph(self, meta, line, no_paragraph_x0):
+        is_sub_paragraph = False
+        for space in self._get_parameters(meta, self._SUBPARAGRAPH_SPACE):
+            is_sub_paragraph = is_sub_paragraph or \
+                eq(line.x0 - no_paragraph_x0, space, 2)
+        return is_sub_paragraph
+
+    def is_subparagraph_line(self, meta, line, no_paragraph_x0):
+        is_sub_line = False
+        for space in self._get_parameters(meta, self._SUB_LINE_SPACE):
+            is_sub_line = is_sub_line or \
+                eq(line.x0 - no_paragraph_x0, space, 2)
+        return is_sub_line
+
+    @staticmethod
+    def right_column_x(meta):
+        data = {2014: (306, 547.4),
+                2013: (306, 547.4),
+                2012: (306, 547.4),
+                2010: (306, 547.4),
+                2002: (301.178, 540.1),
+                2001: (301.178, 540.1),
+                1999: (301.178, 540.1),
+                1998: (315.344, 554.144),
+                1997: (303, 533),
+                }
+        if meta.year in data:
+            return data[meta.year]
+        else:
+            return 306, 547.4
+
+    @staticmethod
+    def left_column_x(meta):
+        data = {2014: (50.26, 291.74),
+                2013: (50.26, 291.74),
+                2012: (50.26, 291.74),
+                2010: (50.26, 291.74),
+                2002: (45.34, 284.14),
+                2001: (45.34, 284.14),
+                1999: (45.34, 284.14),
+                1998: (59.528, 298.278),
+                1997: (57.65, 286.95),
+                }
+        if meta.year in data:
+            return data[meta.year]
+        else:
+            return 50.26, 291.74
 
 
 class LawConverter(PDFLayoutAnalyzer):
@@ -128,20 +185,14 @@ class LawConverter(PDFLayoutAnalyzer):
         Special conditions to exclude what is text but would otherwise be
         interpreted as a title.
         """
-        # todo: send this code logic to the ConverterParameters
-        if self.meta.version == 1:
-            return False
+        previous_is_sub_paragraph = self._parameters.is_subparagraph(
+            self.meta, self.previous_line, column.x0 + self.citing_space)
 
-        paragraph_space = 11.34
-        previous_is_sub_paragraph = eq(self.previous_line.x0 -
-                                       (column.x0 + self.citing_space),
-                                       2*paragraph_space - 1, 1)
-        previous_is_sub_line = eq(self.previous_line.x0 -
-                                  (column.x0 + self.citing_space),
-                                  3*paragraph_space, 1)
+        previous_is_sub_line = self._parameters.is_subparagraph_line(
+            self.meta, self.previous_line, column.x0 + self.citing_space)
 
-        is_sub_line = eq(line.x0 - (column.x0 + self.citing_space),
-                         3*paragraph_space, 1)
+        is_sub_line = self._parameters.is_subparagraph_line(
+            self.meta, line, column.x0 + self.citing_space)
 
         return (previous_is_sub_paragraph or previous_is_sub_line) and \
             is_sub_line
@@ -316,8 +367,6 @@ class LawConverter(PDFLayoutAnalyzer):
                 right_column.add(item)
             else:
                 center_column.add(item)
-            left_column.expand_left(item.x0)
-            right_column.expand_right(item.x1)
 
         def in_table(line):
             # check if text is inside table.
@@ -377,7 +426,7 @@ class LawConverter(PDFLayoutAnalyzer):
         if len(center_column) and len(left_column):
             assert(not (center_column.voverlap(left_column) and
                    center_column.hoverlap(left_column)))
-        # sort inside inside components
+        # sort inside components
         header.analyze(None)
         left_column.analyze(None)
         right_column.analyze(None)
@@ -416,6 +465,11 @@ class LawConverter(PDFLayoutAnalyzer):
             return
 
         self.meta.parse_header(header)
+
+        left_column.expand_left(self._parameters.left_column_x(self.meta)[0])
+        left_column.expand_right(self._parameters.left_column_x(self.meta)[1])
+        right_column.expand_left(self._parameters.right_column_x(self.meta)[0])
+        right_column.expand_right(self._parameters.right_column_x(self.meta)[1])
 
         if center_column.y0 < left_column.y0:
             c1 = left_column

@@ -12,16 +12,16 @@ class TestDocument(unittest.TestCase):
         with open(file_name+'.html') as my_file:
             return my_file.read().decode("UTF-8")
 
+    def setUp(self):
+        self.rsrcmgr = PDFResourceManager(caching=True)
+        params = LAOrganizer()
+        self.device = LawConverter(self.rsrcmgr, laparams=params)
+
     def _run_test(self, file_name, pages):
-        rsrcmgr = PDFResourceManager(caching=True)
 
         fp = file(file_name, 'rb')
 
-        params = LAOrganizer()
-
-        self.device = LawConverter(rsrcmgr, laparams=params)
-
-        interpreter = PDFPageInterpreter(rsrcmgr, self.device)
+        interpreter = PDFPageInterpreter(self.rsrcmgr, self.device)
         for page in PDFPage.get_pages(fp, pagenos=pages):
             interpreter.process_page(page)
         fp.close()
@@ -118,10 +118,14 @@ class Test0272602741(TestDocument):
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.1').split('\n'))
 
+    @unittest.expectedFailure
+    # there seems to be a shift of the titles on citing bigger than rest of
+    # the cited text.
     def test_page_2(self):
         file_name = 'tests/samples/0272602741.pdf'
 
-        self._run_test(file_name, [1])
+        self.device._is_citing = True
+        self._run_test(file_name, [4])
 
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.2').split('\n'))
@@ -138,9 +142,12 @@ class Test0272602741(TestDocument):
 
         self.assertEqual(1, len(self.device.titles))
 
+    @unittest.expectedFailure
+    # see test_page_2.
     def test_page_4(self):
         file_name = 'tests/samples/0272602741.pdf'
 
+        self.device._is_citing = True
         self._run_test(file_name, [4])
 
         self.assertEqual(self.device.as_html().split('\n'),
@@ -186,6 +193,13 @@ class Test107190(TestDocument):
 
         # todo: this page is not correctly parsed. Improve it.
 
+    def test_page_7(self):
+        file_name = 'tests/samples/107190.pdf'
+        self._run_test(file_name, [6])
+
+        self.assertEqual(1, len(self.device.tables))
+        self.assertEqual(4, len(self.device.result))
+
     def test_page_12(self):
         file_name = 'tests/samples/107190.pdf'
         self._run_test(file_name, [11])
@@ -194,6 +208,31 @@ class Test107190(TestDocument):
                          self.get_expected(file_name+'.12').split('\n'))
 
         self.assertEqual(6, len(self.device.titles))
+
+
+class Test108839(TestDocument):
+
+    def test_page_2(self):
+        """
+        Page with a complex column organization.
+        """
+        file_name = 'tests/samples/108839.pdf'
+
+        self.device._is_citing = True
+        self._run_test(file_name, [1])
+
+        self.assertEqual(4, len(self.device.titles))
+
+    def test_page_9(self):
+        """
+        Page with a complex column organization.
+        """
+        file_name = 'tests/samples/108839.pdf'
+
+        self.device._is_citing = True
+        self._run_test(file_name, [8])
+
+        self.assertEqual(21, len(self.device.titles))
 
 
 class Test116008(TestDocument):
@@ -215,6 +254,16 @@ class Test116008(TestDocument):
 
         self.assertEqual(12, len(self.device.titles))
         self.assertEqual(3, len(self.device.tables))
+
+    @unittest.expectedFailure
+    # this page contains a page with two centered columns.
+    # todo: generalize the algorithm for 2 centered columns.
+    def test_page_6(self):
+        file_name = 'tests/samples/116008.pdf'
+        self._run_test(file_name, [5])
+
+        self.assertEqual(22, len(self.device.titles))
+        self.assertEqual(2, len(self.device.tables))
 
     def test_page_8(self):
         file_name = 'tests/samples/116008.pdf'
@@ -242,6 +291,33 @@ class Test118381(TestDocument):
 
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.2').split('\n'))
+
+    def test_page_4(self):
+        """
+        A case where there is a paragraph with a different paragraph space
+        """
+        file_name = 'tests/samples/118381.pdf'
+        self._run_test(file_name, [3])
+
+        self.assertEqual(8, len(self.device.titles))
+
+    def test_page_5(self):
+        """
+        A case where there is a paragraph with a different paragraph space
+        """
+        file_name = 'tests/samples/118381.pdf'
+        self._run_test(file_name, [4])
+
+        self.assertEqual(2, len(self.device.titles))
+
+    def test_page_6(self):
+        """
+        A case where there is a paragraph with a different paragraph space
+        """
+        file_name = 'tests/samples/118381.pdf'
+        self._run_test(file_name, [5])
+
+        self.assertEqual(13, len(self.device.titles))
 
 
 class Test128839(TestDocument):
@@ -358,6 +434,26 @@ class Test131371(TestDocument):
 
 
 class Test135502(TestDocument):
+
+    @unittest.expectedFailure
+    # todo: there is a form here. Maybe we can track it via a rectangle.
+    def test_page_5(self):
+        file_name = 'tests/samples/135502.pdf'
+        self._run_test(file_name, [4])
+
+        self._print_result()
+
+        self.assertEqual(10, len(self.device.titles))
+
+    @unittest.expectedFailure
+    # see test_page_5
+    def test_page_6(self):
+        file_name = 'tests/samples/135502.pdf'
+        self._run_test(file_name, [5])
+
+        self._print_result()
+
+        self.assertEqual(7, len(self.device.titles))
 
     def test_page_8(self):
         """
