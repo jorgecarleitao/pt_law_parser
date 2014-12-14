@@ -6,8 +6,8 @@ from pdfminer.utils import apply_matrix_pt
 
 from pt_law_parser.layout import LTNetwork, LTTextHeader, LTTextColumn
 from pt_law_parser.point import Point
-from pt_law_parser.html import Line, Header, Table, SimpleImage, BlockquoteEnd, \
-    BlockquoteStart
+from pt_law_parser.html import Paragraph, Header, Table, SimpleImage, \
+    BlockquoteStart, BlockquoteEnd
 from pt_law_parser.meta import Meta
 from pt_law_parser.auxiliar import eq, int_round, middle_x
 
@@ -154,6 +154,11 @@ class LawConverter(PDFLayoutAnalyzer):
         return self._titles
 
     @property
+    def paragraphs(self):
+        return [p for p in self._result_lines if isinstance(p, Paragraph) and not
+                isinstance(p, Header)]
+
+    @property
     def tables(self):
         return self._all_tables
 
@@ -230,7 +235,7 @@ class LawConverter(PDFLayoutAnalyzer):
         self._titles.append(line)
 
     def add_paragraph(self, line):
-        self.add(Line(line.get_text()))
+        self.add(Paragraph(line.get_text()))
 
     def add_table(self, table):
         if table not in self._result_lines:
@@ -241,7 +246,7 @@ class LawConverter(PDFLayoutAnalyzer):
             self.add(image)
 
     def merge(self, line):
-        self._result_lines[-1].merge(Line(line.get_text()))
+        self._result_lines[-1].merge(Paragraph(line.get_text()))
 
     def _parse_line(self, line, column):
         # todo: parse italics inside sentences

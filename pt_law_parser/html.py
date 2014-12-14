@@ -7,7 +7,7 @@ from pt_law_parser.auxiliar import eq, middle_x
 from pt_law_parser.point import Point
 
 
-class Line(object):
+class Paragraph(object):
 
     @staticmethod
     def sanitize(text):
@@ -35,7 +35,7 @@ class Line(object):
         return '<p>%s</p>' % self.text
 
 
-class Header(Line):
+class Header(Paragraph):
 
     def as_html(self):
         return '<h1>%s</h1>' % self.text
@@ -90,7 +90,7 @@ class Table(LTComponent):
             text = remove_dots(item.get_text())
             if text == '.':
                 return
-            line = Line(text)
+            line = Paragraph(text)
 
             if not self._lines:
                 # cell is empty
