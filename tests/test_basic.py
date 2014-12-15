@@ -44,37 +44,41 @@ class Test01060115(TestDocument):
         file_name = 'tests/samples/01060115.pdf'
         self._run_test(file_name, [0])
 
+        self.assertEqual(11, len(self.device.titles))
+        self.assertEqual(21, len(self.device.paragraphs))
+
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.1').split('\n'))
-
-        self.assertEqual(11, len(self.device.titles))
 
     def test_page_2(self):
         file_name = 'tests/samples/01060115.pdf'
         self._run_test(file_name, [1])
 
+        self.assertEqual(19, len(self.device.titles))
+        self.assertEqual(20, len(self.device.paragraphs))
+
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.2').split('\n'))
-
-        self.assertEqual(19, len(self.device.titles))
 
     def test_page_3(self):
         file_name = 'tests/samples/01060115.pdf'
         self._run_test(file_name, [2])
 
+        self.assertEqual(12, len(self.device.titles))
+        self.assertEqual(29, len(self.device.paragraphs))
+
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.3').split('\n'))
-
-        self.assertEqual(12, len(self.device.titles))
 
     def test_page_6(self):
         file_name = 'tests/samples/01060115.pdf'
         self._run_test(file_name, [5])
 
+        self.assertEqual(6, len(self.device.titles))
+        self.assertEqual(33, len(self.device.paragraphs))
+
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.6').split('\n'))
-
-        self.assertEqual(6, len(self.device.titles))
 
     def test_page_7(self):
         """
@@ -83,10 +87,11 @@ class Test01060115(TestDocument):
         file_name = 'tests/samples/01060115.pdf'
         self._run_test(file_name, [6])
 
+        self.assertEqual(16, len(self.device.titles))
+        self.assertEqual(26, len(self.device.paragraphs))
+
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.7').split('\n'))
-
-        self.assertEqual(16, len(self.device.titles))
 
     def test_page_9(self):
         """
@@ -95,10 +100,11 @@ class Test01060115(TestDocument):
         file_name = 'tests/samples/01060115.pdf'
         self._run_test(file_name, [8])
 
+        self.assertEqual(13, len(self.device.titles))
+        self.assertEqual(42, len(self.device.paragraphs))
+
         self.assertEqual(self.device.as_html().split('\n'),
                          self.get_expected(file_name+'.9').split('\n'))
-
-        self.assertEqual(13, len(self.device.titles))
 
 
 class Test0272602741(TestDocument):
