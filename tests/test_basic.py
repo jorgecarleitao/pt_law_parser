@@ -232,9 +232,7 @@ class Test108839(TestDocument):
 
 
 class Test113604(TestDocument):
-    @unittest.expectedFailure
-    # It identifies extra paragraphs corresponding to two sub-lines.
-    # todo: distinguish them.
+
     def test_page_3(self):
         file_name = 'tests/samples/113604.pdf'
         self._run_test(file_name, [2])
@@ -244,8 +242,7 @@ class Test113604(TestDocument):
 
 
 class Test116008(TestDocument):
-    @unittest.expectedFailure
-    # Same as Test113604.test_page_3
+
     def test_page_2(self):
         file_name = 'tests/samples/116008.pdf'
         self._run_test(file_name, [1])

@@ -45,7 +45,7 @@ class ConverterParameters(object):
 
     _SUB_LINE_SPACE = {None: tuple(),
                        2002: (29.48, 34.843),
-                       'v2': (34.844,)}
+                       'v2': (34.844, 31.98)}
 
     @staticmethod
     def _get_parameters(meta, parameters_dict):
@@ -185,7 +185,15 @@ class LawConverter(PDFLayoutAnalyzer):
         Checks if line is a new paragraph
         """
         no_paragraph_x0 = column.x0 + self.citing_space
-        return self._parameters.is_paragraph(self.meta, line, no_paragraph_x0)
+        return self._parameters.is_paragraph(self.meta, line, no_paragraph_x0) and\
+            not self.is_line(line, column)
+
+    def is_line(self, line, column):
+        """
+        Special condition to distinguish a line from a paragraph.
+        """
+        return self._is_text(line, column) and \
+            0 < line.y1 - self.previous_line.y0 < 2
 
     def _is_text(self, line, column):
         """
