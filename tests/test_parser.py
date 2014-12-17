@@ -44,8 +44,6 @@ class TestParser(TestDocument):
 
         self.assertEqual(15 + 2 + 3, len(device.titles))
 
-    @unittest.expectedFailure
-    # See expected failure of test_basic.Test116008.test_page_6.
     def test_116008(self):
         """
         Document from 2001.

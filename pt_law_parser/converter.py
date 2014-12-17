@@ -378,12 +378,6 @@ class LawConverter(PDFLayoutAnalyzer):
                     return True
             return False
 
-        # add the tables to respective columns
-        for table in self._tables:
-            if table.y0 <= last_page_limit:
-                continue  # ignores lines below the end
-            layout.add(table)
-
         for line in lines:
             assert(line._objs[-1].get_text() == '\n')
             line._objs = line._objs[:-1]  # remove '\n' char from line.
@@ -400,6 +394,12 @@ class LawConverter(PDFLayoutAnalyzer):
                 pass
             else:
                 layout.add_line(line, self.is_title)
+
+        # add the tables to respective columns
+        for table in self._tables:
+            if table.y0 <= last_page_limit:
+                continue  # ignores lines below the end
+            layout.add(table)
 
         # add images to respective columns
         for image in self._images:

@@ -268,9 +268,6 @@ class Test116008(TestDocument):
         self.assertEqual(12, len(self.device.titles))
         self.assertEqual(3, len(self.device.tables))
 
-    @unittest.expectedFailure
-    # this page contains a page with two centered columns.
-    # todo: generalize the algorithm for 2 centered columns.
     def test_page_6(self):
         file_name = 'tests/samples/116008.pdf'
         self._run_test(file_name, [5])
