@@ -30,6 +30,106 @@ class LTTextHeader(LTExpandableContainer):
                             reverse=True)
 
 
+class LTPageLayout(object):
+
+    MIDDLE_X1 = (292 + 306.0)/2
+
+    def __init__(self):
+        self.header = LTTextHeader()
+        self.center = []
+        self.left = []
+        self.right = []
+
+        self._previous_column = None
+
+    def add(self, item):
+        if item.x0 < item.x1 < self.MIDDLE_X1:
+            if not self.left:
+                self.left.append(LTTextColumn())
+            column = self.left[-1]
+        elif self.MIDDLE_X1 < item.x0 < item.x1:
+            if not self.right:
+                self.right.append(LTTextColumn())
+            column = self.right[-1]
+        else:
+            if not self.center:
+                self.center.append(LTTextColumn())
+            column = self.center[-1]
+        column.add(item)
+
+    def add_line(self, line, is_title):
+        if line.x0 < line.x1 < self.MIDDLE_X1:
+            if not self.left:
+                self.left.append(LTTextColumn())
+            column = self.left[-1]
+
+            if self._previous_column and self._previous_column in self.center and \
+                    len(self.center[-1]):
+                if not is_title(line, column):
+                    column = self.center[-1]
+
+        elif self.MIDDLE_X1 < line.x0 < line.x1:
+            if not self.right:
+                self.right.append(LTTextColumn())
+            column = self.right[-1]
+        else:
+            if not self.center:
+                self.center.append(LTTextColumn())
+            column = self.center[-1]
+
+        column.add(line)
+        self._previous_column = column
+
+    def add_header(self, line):
+        self.header.add(line)
+
+    def analyze(self):
+        # assert that the layouts are not overlapping.
+        for layout in self.center:
+            for layout_prime in self.left:
+                if len(layout) and len(layout_prime):
+                    assert(not (layout_prime.voverlap(layout) and
+                                layout_prime.hoverlap(layout)))
+
+        for element in [self.header] + self.center + self.left + self.right:
+            element.analyze(None)
+
+    def is_empty(self):
+        return not (self.center or self.left)
+
+    def expand_left(self, x0, x1):
+        for left_column in self.left:
+            left_column.expand_left(x0)
+            left_column.expand_right(x1)
+
+    def expand_right(self, x0, x1):
+        for right_column in self.right:
+            right_column.expand_left(x0)
+            right_column.expand_right(x1)
+
+    def ordered_columns(self):
+        """
+        Returns the list of columns ordered according to the reading order.
+        """
+        if self.is_empty():
+            return []
+        elif not self.center:
+            return [self.left[-1], self.right[-1]]
+        elif not self.left:
+            return [self.center[-1]]
+        else:
+            if self.center[-1].y0 < self.left[-1].y0:
+                if self.right:
+                    return [self.left[-1], self.right[-1], self.center[-1]]
+                else:
+                    return [self.left[-1], self.center[-1]]
+            else:
+                if self.right:
+                    return [self.center[-1], self.left[-1], self.right[-1]]
+                else:
+                    return [self.center[-1], self.left[-1]]
+
+
 class LTNetwork(LTItem):
     def __init__(self):
         super(LTNetwork, self).__init__()

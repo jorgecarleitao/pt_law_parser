@@ -4,7 +4,7 @@ from pdfminer.layout import LTTextGroup, LAParams, LTLine, LTRect, LTFigure, \
 from pdfminer.converter import PDFLayoutAnalyzer
 from pdfminer.utils import apply_matrix_pt
 
-from pt_law_parser.layout import LTNetwork, LTTextHeader, LTTextColumn
+from pt_law_parser.layout import LTNetwork, LTPageLayout
 from pt_law_parser.point import Point
 from pt_law_parser.html import Paragraph, Header, Table, SimpleImage, \
     BlockquoteStart, BlockquoteEnd
@@ -367,24 +367,11 @@ class LawConverter(PDFLayoutAnalyzer):
             except Table.EmptyTableError:
                 pass
 
-    def _build_components(self, lines, header_min_y, last_page_limit):
-        header = LTTextHeader()
-        center_column = LTTextColumn()
-        left_column = LTTextColumn()
-        right_column = LTTextColumn()
-
-        def add_to_column(item):
-            if item.y0 <= last_page_limit:
-                pass  # ignores lines below the end
-            elif item.x0 < item.x1 < MIDDLE_X1:
-                left_column.add(item)
-            elif MIDDLE_X1 < item.x0 < item.x1:
-                right_column.add(item)
-            else:
-                center_column.add(item)
+    def _build_layout(self, lines, header_min_y, last_page_limit):
+        layout = LTPageLayout()
 
         def in_table(line):
-            # check if text is inside table.
+            # check if text is inside table and add it to it if yes.
             for table in self._tables:
                 if table.hoverlap(line) and table.voverlap(line):
                     table.add(line)
@@ -393,60 +380,36 @@ class LawConverter(PDFLayoutAnalyzer):
 
         # add the tables to respective columns
         for table in self._tables:
-            add_to_column(table)
+            if table.y0 <= last_page_limit:
+                continue  # ignores lines below the end
+            layout.add(table)
 
-        previous_line = None
         for line in lines:
             assert(line._objs[-1].get_text() == '\n')
             line._objs = line._objs[:-1]  # remove '\n' char from line.
 
             # ignores empty lines, a by-product of the PDFMiner.
             if line.get_text().replace(' ', '') == '':
-                continue
-
-            if line.y0 > header_min_y - 5:  # -5: a small margin for variations
-                header.add(line)
+                pass
             elif line.y0 <= last_page_limit:
                 pass  # ignores lines below the end
+            elif line.y0 > header_min_y - 5:  # -5: a small margin for variations
+                # lines in header
+                layout.add_header(line)
             elif in_table(line):
                 pass
             else:
-                if line.x0 < line.x1 < MIDDLE_X1:
-
-                    is_below = len(left_column) and len(center_column)
-                    is_below = is_below and \
-                        left_column.y0 > center_column.y0 > line.y0
-
-                    # a line that is in center column, but finishes before
-                    # MIDDLE_X1; OR a line already inside the center column; OR
-                    # left_column is above center which is above line.
-                    if previous_line in center_column and \
-                            previous_line.y0 - line.y1 < 0 or \
-                            center_column.voverlap(line) and \
-                            center_column.hoverlap(line) or \
-                            is_below:
-                        center_column.add(line)
-                    else:
-                        left_column.add(line)
-                elif MIDDLE_X1 < line.x0 < line.x1:
-                    right_column.add(line)
-                else:
-                    center_column.add(line)
-            previous_line = line
+                layout.add_line(line, self.is_title)
 
         # add images to respective columns
         for image in self._images:
-            add_to_column(image)
+            if image.y0 <= last_page_limit:
+                continue  # ignores lines below the end
+            layout.add(image)
 
-        if len(center_column) and len(left_column):
-            assert(not (center_column.voverlap(left_column) and
-                   center_column.hoverlap(left_column)))
-        # sort inside components
-        header.analyze(None)
-        left_column.analyze(None)
-        right_column.analyze(None)
-        center_column.analyze(None)
-        return header, center_column, left_column, right_column
+        layout.analyze()
+
+        return layout
 
     def receive_layout(self, ltpage):
         if not len(ltpage) or not isinstance(ltpage[0], LTTextBox):
@@ -472,32 +435,19 @@ class LawConverter(PDFLayoutAnalyzer):
                         if isinstance(item, LTFigure)]
         self._create_tables(items)
 
-        header, center_column, left_column, right_column = \
-            self._build_components(lines, header_min_y, last_page_limit)
+        layout = self._build_layout(lines, header_min_y, last_page_limit)
 
-        if len(left_column) == 0 and len(center_column) == 0:
+        if layout.is_empty():
             # Page with no content => ignore.
             return
 
-        self.meta.parse_header(header)
+        self.meta.parse_header(layout.header)
 
-        left_column.expand_left(self._parameters.left_column_x(self.meta)[0])
-        left_column.expand_right(self._parameters.left_column_x(self.meta)[1])
-        right_column.expand_left(self._parameters.right_column_x(self.meta)[0])
-        right_column.expand_right(self._parameters.right_column_x(self.meta)[1])
+        layout.expand_left(*self._parameters.left_column_x(self.meta))
+        layout.expand_right(*self._parameters.right_column_x(self.meta))
 
-        if center_column.y0 < left_column.y0:
-            c1 = left_column
-            c2 = right_column
-            c3 = center_column
-        else:
-            c1 = center_column
-            c2 = left_column
-            c3 = right_column
-
-        self._parse_column(c1)
-        self._parse_column(c2)
-        self._parse_column(c3)
+        for column in layout.ordered_columns():
+            self._parse_column(column)
 
     def _parse_column(self, column):
         for line in column:
