@@ -1,0 +1,2 @@
+pycrypto
+git+https://github.com/jorgecarleitao/pdfminer.git
