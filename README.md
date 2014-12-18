@@ -31,10 +31,19 @@ We use Python 2.7 since our dependency still does not support Python 3.
 
 ## Pre-requisites and installation
 
-The package is a normal Python package. It depends on a fork of PDFMiner, a tool
-to parse PDFs. To install it, run
+This package has two dependencies: 
+
+1 a fork of PDFMiner, a tool to parse PDFs. To install it, run
 
 `pip install git+https://github.com/jorgecarleitao/pdfminer.git@main`
+
+2 [pycrypto](https://www.dlitz.net/software/pycrypto/). To install it, run
+
+`pip install pycrypto`
+
+Finally, you can install `pt_law_parser` running:
+
+`pip install git+https://github.com/jorgecarleitao/pt_law_parser`
 
 ## Tests
 
