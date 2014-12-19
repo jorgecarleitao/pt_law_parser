@@ -492,3 +492,14 @@ class Test135502(TestDocument):
         self._run_test(file_name, [12])
 
         self.assertEqual(0, len(self.device.titles))
+
+
+class Test137616(TestDocument):
+    """
+    Document with a formula as an Image. The line after it is not a paragraph.
+    """
+    def test_page_4(self):
+        file_name = 'tests/samples/137616.pdf'
+        self._run_test(file_name, [3])
+
+        self.assertEqual(4, len(self.device.titles))

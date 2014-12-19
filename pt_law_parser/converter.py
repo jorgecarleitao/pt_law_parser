@@ -256,6 +256,11 @@ class LawConverter(PDFLayoutAnalyzer):
             self.add(image)
 
     def merge(self, line):
+        if isinstance(self._result_lines[-1], SimpleImage):
+            # situation where the text is not a paragraph, but a continuation
+            # of the text inside the image (e.g. an Equation).
+            return self.add_paragraph(line)
+
         self._result_lines[-1].merge(Paragraph(line.get_text()))
 
     def _parse_line(self, line, column):
