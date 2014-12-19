@@ -322,20 +322,18 @@ class LawConverter(PDFLayoutAnalyzer):
         if not rectangles:
             return False
 
+        # summary of v2 documents.
         for rectangle in rectangles:
             # if is centered but not on the bottom of the page.
             if self.is_page_centered(rectangle) and not rectangle.y1 < 80:
                 return True
 
         # summary page always contains items
-        if len(items) <= 1:
+        if len(items) < 1:
             return False
 
         if not isinstance(items[0], LTRect):
             return False
-        # some layouts have a rectangle too much.
-        if isinstance(items[1], LTRect):
-            items.pop(1)
 
         # situation where we have a left-rectangle in summary page
         if eq(items[0].x0, 50, 2) and eq(items[0].x1, 169.512, 2):

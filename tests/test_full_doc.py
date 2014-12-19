@@ -57,6 +57,15 @@ class TestDocStart(TestDocument):
 
         self.assertEqual(self.device.result, [])
 
+    def test_137070(self):
+        """
+        Document from 2014.
+        """
+        file_name = 'tests/samples/137070.pdf'
+        self._run_test(file_name, [0, 1, 2, 3])
+
+        self.assertEqual(self.device.result, [])
+
 
 class TestDocEnd(TestDocument):
     """
