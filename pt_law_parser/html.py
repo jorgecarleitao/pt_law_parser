@@ -121,6 +121,9 @@ class Table(LTComponent):
         pass
 
     def __init__(self, network):
+        if len(network) <= 2:
+            raise self.EmptyTableError
+
         # construct rows and columns borders by distinct x and y's.
         self._rows_borders = sorted(list(
             set(point.y for point in network.points)))
@@ -136,9 +139,6 @@ class Table(LTComponent):
         self._create_links(network)
         self._cells = self._create_cells(network)
         self._elements = self._build_elements(self._cells)
-
-        if not self._cells:
-            raise self.EmptyTableError
 
     def _close_network(self, network):
         """

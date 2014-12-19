@@ -243,6 +243,13 @@ class LTNetwork(LTItem):
         Replaces the node (e.g. move its position).
         """
         self.add(new_node)
+
+        if self.links[old_node] == {new_node}:
+            # two points that merge together without other link interfering.
+            self.links[new_node] = set()
+            self.remove_point(old_node)
+            return
+
         for link in self.links[old_node]:
             self.add_link(new_node, link)
 

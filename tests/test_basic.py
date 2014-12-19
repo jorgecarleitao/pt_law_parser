@@ -503,3 +503,9 @@ class Test137616(TestDocument):
         self._run_test(file_name, [3])
 
         self.assertEqual(4, len(self.device.titles))
+
+    def test_page_5(self):
+        file_name = 'tests/samples/137616.pdf'
+        self._run_test(file_name, [4])
+
+        self.assertEqual(2, len(self.device.titles))
