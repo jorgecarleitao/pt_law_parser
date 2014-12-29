@@ -184,7 +184,7 @@ class LawConverter(PDFLayoutAnalyzer):
         """
         Checks if line is a new paragraph
         """
-        no_paragraph_x0 = column.x0 + self.citing_space
+        no_paragraph_x0 = column.x0 + self.citing_space(column)
         return self._parameters.is_paragraph(self.meta, line, no_paragraph_x0) and\
             not self.is_line(line, column)
 
@@ -201,13 +201,13 @@ class LawConverter(PDFLayoutAnalyzer):
         interpreted as a title.
         """
         previous_is_sub_paragraph = self._parameters.is_subparagraph(
-            self.meta, self.previous_line, column.x0 + self.citing_space)
+            self.meta, self.previous_line, column.x0 + self.citing_space(column))
 
         previous_is_sub_line = self._parameters.is_subparagraph_line(
-            self.meta, self.previous_line, column.x0 + self.citing_space)
+            self.meta, self.previous_line, column.x0 + self.citing_space(column))
 
         is_sub_line = self._parameters.is_subparagraph_line(
-            self.meta, line, column.x0 + self.citing_space)
+            self.meta, line, column.x0 + self.citing_space(column))
 
         return (previous_is_sub_paragraph or previous_is_sub_line) and \
             is_sub_line
@@ -220,11 +220,11 @@ class LawConverter(PDFLayoutAnalyzer):
         """
         Checks if line is centered (i.e. a section title, etc.)
         """
-        center_x = middle_x(column.bbox) + self.citing_space
+        center_x = middle_x(column.bbox) + self.citing_space(column)
         return eq(center_x, middle_x(line.bbox), 2)
 
     def is_full_width(self, line, column):
-        return eq(line.width + self.citing_space, column.width, 4)
+        return eq(line.width + self.citing_space(column), column.width, 4)
 
     def is_title(self, line, column):
         is_full_width = self.is_full_width(line, column)
@@ -233,8 +233,11 @@ class LawConverter(PDFLayoutAnalyzer):
                 not (is_full_width or self.is_paragraph(line, column)) and
                 not self._is_text(line, column)) or 'Bold' in line[0].fontname
 
-    @property
-    def citing_space(self):
+    def citing_space(self, column):
+        # the citing space of centered columns is always 0.
+        if crosses_middle(column):
+            return 0
+
         return self._parameters.citing_space(self.meta)*self._is_citing
 
     def add(self, element):
