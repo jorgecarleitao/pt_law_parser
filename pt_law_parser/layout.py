@@ -132,7 +132,7 @@ class LTPageLayout(object):
         Asserts that the layouts are not overlapping.
         """
         for layout in self.center:
-            for layout_prime in self.left:
+            for layout_prime in self.left + self.right:
                 if len(layout) and len(layout_prime):
                     assert(not (layout_prime.voverlap(layout) and
                                 layout_prime.hoverlap(layout)))
@@ -426,8 +426,8 @@ class LTNetwork(LTItem):
         return networks
 
     def create_components(self):
-        self._remove_duplicates()
         self._align_nodes()
+        self._remove_duplicates()
 
         self._fix_intersections()
         self._fix_missing_links()

@@ -509,3 +509,17 @@ class Test137616(TestDocument):
         self._run_test(file_name, [4])
 
         self.assertEqual(2, len(self.device.titles))
+
+
+class Test137630(TestDocument):
+
+    @unittest.expectedFailure
+    # this page contains a right-centered text in bold that should not be
+    # interpreted as a title.
+    def test_page_9(self):
+        file_name = 'tests/samples/137630.pdf'
+        self._run_test(file_name, [8])
+
+        self._print_result()
+
+        self.assertEqual(11, len(self.device.titles))
