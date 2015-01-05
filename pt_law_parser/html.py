@@ -4,7 +4,6 @@ from collections import defaultdict
 from pdfminer.layout import LTComponent, LTImage
 
 from pt_law_parser.auxiliar import eq, middle_x
-from pt_law_parser.point import Point
 
 
 class Paragraph(object):
@@ -43,11 +42,11 @@ class Header(Paragraph):
 
 class Table(LTComponent):
     """
-    A table performs 3 operations:
+    A table has the following interface:
 
     1. receives a network and converts it to a set of cells (__init__)
     2. receives items and maps then to the correct cells (add)
-    3. is able to represent itself in HTML (as_html)
+    3. represents itself in HTML (as_html)
     """
 
     class Element():
@@ -135,81 +134,8 @@ class Table(LTComponent):
                                     self._columns_borders[-1],
                                     self._rows_borders[-1]))
 
-        self._close_network(network)
-        self._create_links(network)
         self._cells = self._create_cells(network)
         self._elements = self._build_elements(self._cells)
-
-    def _close_network(self, network):
-        """
-        Adds missing corners and border links to close the network.
-        """
-        # add possible missing corners
-        for corner in ((self.x0, self.y0), (self.x0, self.y1), (self.x1, self.y1),
-                       (self.x1, self.y0)):
-            network.add_point(Point(corner))
-        # add possible missing bottom and top borders
-        for row in (self._rows_borders[0], self._rows_borders[-1]):
-            points = sorted([point for point in network if point.y == row],
-                            key=lambda p: p.x)
-            for i, point in enumerate(points):
-                if i == 0:
-                    continue
-                network.add_link(points[i - 1], point)
-
-        # add possible missing left and right borders
-        for column in (self._columns_borders[0], self._columns_borders[-1]):
-            points = sorted([point for point in network if point.x == column],
-                            key=lambda p: p.y)
-            for i, point in enumerate(points):
-                if i == 0:
-                    continue
-                network.add_link(points[i - 1], point)
-
-    def _create_links(self, network):
-        """
-        Creates all links between points that are co-linear. These points become
-        fully connected.
-        """
-        links_to_create = set()
-
-        links = network.links  # an alias
-
-        for row in self._rows_borders:
-            # all points in this row and sorted by x
-            points = sorted([point for point in network if point.y == row],
-                            key=lambda p: p.x)
-
-            # a O(N^2) loop that breaks the inner
-            # if there is a link-break along the way.
-            for index, point in enumerate(points[:-1]):
-                index_prime = index + 1  # starting on the following point
-
-                # while there is a link between point at index_prime and
-                # the previous point at `index_prime - 1`.
-                while index_prime != len(points) and \
-                        points[index_prime] in links[points[index_prime - 1]]:
-                    # add the link from point to point prime and advance
-                    # point prime by one.
-                    links_to_create.add((point, points[index_prime]))
-
-                    index_prime += 1
-
-        # Exactly the same loop, but with x<>y and row<>column.
-        for column in self._columns_borders:
-            points = sorted([point for point in network
-                             if point.x == column], key=lambda p: p.y)
-            for index, point in enumerate(points[:-1]):
-                index_prime = index + 1
-                while index_prime != len(points) and \
-                        points[index_prime] in links[points[index_prime - 1]]:
-                    links_to_create.add((point, points[index_prime]))
-
-                    index_prime += 1
-
-        # finally, add the links
-        for point, point_prime in links_to_create:
-            network.add_link(point, point_prime)
 
     @staticmethod
     def _create_cells(network):

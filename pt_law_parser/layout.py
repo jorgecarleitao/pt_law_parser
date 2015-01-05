@@ -366,7 +366,91 @@ class LTNetwork(LTItem, UndirectedNetwork):
         assert(sum(len(network) for network in networks) ==
                len(self))
 
+        for network in networks:
+            network.close_network()
+            network.add_collinear_links()
+
         return networks
+
+    def close_network(self):
+        """
+        Adds possible missing corners and border links to close the network.
+        """
+        rows_borders = sorted(list(set(point.y for point in self)))
+        columns_borders = sorted(list(set(point.x for point in self)))
+
+        x0 = columns_borders[0]
+        y0 = rows_borders[0]
+        x1 = columns_borders[-1]
+        y1 = rows_borders[-1]
+
+        # add possible missing corners
+        for corner in ((x0, y0), (x0, y1), (x1, y1), (x1, y0)):
+            self.add_point(Point(corner))
+
+        # add possible missing bottom and top borders
+        for row in (rows_borders[0], rows_borders[-1]):
+            points = sorted([point for point in self if point.y == row],
+                            key=lambda p: p.x)
+            for i, point in enumerate(points):
+                if i == 0:
+                    continue
+                self.add_link(points[i - 1], point)
+
+        # add possible missing left and right borders
+        for column in (columns_borders[0], columns_borders[-1]):
+            points = sorted([point for point in self if point.x == column],
+                            key=lambda p: p.y)
+            for i, point in enumerate(points):
+                if i == 0:
+                    continue
+                self.add_link(points[i - 1], point)
+
+    def add_collinear_links(self):
+        """
+        Adds links between all points that are collinear. These collinear points
+        become fully connected.
+        """
+        rows_borders = sorted(list(set(point.y for point in self)))
+        columns_borders = sorted(list(set(point.x for point in self)))
+
+        links_to_create = set()
+
+        for row in rows_borders:
+            # all points in this row and sorted by x
+            points = sorted([point for point in self if point.y == row],
+                            key=lambda p: p.x)
+
+            # a O(N^2) loop that breaks the inner
+            # if there is a link-break along the way.
+            for index, point in enumerate(points[:-1]):
+                index_prime = index + 1  # starting on the following point
+
+                # while there is a link between point at index_prime and
+                # the previous point at `index_prime - 1`.
+                while index_prime != len(points) and \
+                        points[index_prime] in self.links[points[index_prime - 1]]:
+                    # add the link from point to point prime and advance
+                    # point prime by one.
+                    links_to_create.add((point, points[index_prime]))
+
+                    index_prime += 1
+
+        # Exactly the same loop, but with x<>y and row<>column.
+        for column in columns_borders:
+            points = sorted([point for point in self
+                             if point.x == column], key=lambda p: p.y)
+            for index, point in enumerate(points[:-1]):
+                index_prime = index + 1
+                while index_prime != len(points) and \
+                        points[index_prime] in self.links[points[index_prime - 1]]:
+                    links_to_create.add((point, points[index_prime]))
+
+                    index_prime += 1
+
+        # finally, add the links
+        for point, point_prime in links_to_create:
+            self.add_link(point, point_prime)
 
     def create_components(self):
         self._align_nodes()

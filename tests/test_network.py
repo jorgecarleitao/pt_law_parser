@@ -27,4 +27,5 @@ class TestCase(unittest.TestCase):
         self.assertEqual(2, len(network.links_list()))
 
         network.remove_link(Point((0, 1)), Point((1, 1)))
+        self.assertEqual(3, len(network))
         self.assertEqual(1, len(network.links_list()))
