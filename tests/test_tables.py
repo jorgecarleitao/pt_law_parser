@@ -26,7 +26,7 @@ class TestCase(unittest.TestCase):
 
         points = {Point((0, 0)), Point((1, 0)), Point((0, 1)), Point((1, 1))}
         for point in points:
-            network.add(point)
+            network.add_point(point)
 
         network.add_link(Point((0, 0)), Point((0, 1)))
         network.add_link(Point((0, 0)), Point((1, 0)))
@@ -45,7 +45,7 @@ class TestCase(unittest.TestCase):
                   Point((0, 1)), Point((9, 1)), Point((1, 1)), Point((1, 9))}
 
         for point in points:
-            network.add(point)
+            network.add_point(point)
 
         network.add_link(Point((0, 0)), Point((0, 1)))
         network.add_link(Point((0, 0)), Point((9, 0)))
@@ -80,7 +80,7 @@ class TestCase(unittest.TestCase):
 
         network = LTNetwork()
         for point in points:
-            network.add(point)
+            network.add_point(point)
 
         network.add_link(points[0], points[3])
         network.add_link(points[1], points[4])
@@ -109,7 +109,7 @@ class TestNetworkIntersections(unittest.TestCase):
 
         network = LTNetwork()
         for point in points:
-            network.add(point)
+            network.add_point(point)
 
         network.add_link(points[0], points[1])
         network.add_link(points[2], points[3])
@@ -125,7 +125,7 @@ class TestNetworkIntersections(unittest.TestCase):
 
         network = LTNetwork()
         for point in points:
-            network.add(point)
+            network.add_point(point)
 
         network.add_link(points[0], points[1])
         network.add_link(points[2], points[3])
@@ -133,5 +133,4 @@ class TestNetworkIntersections(unittest.TestCase):
         network._fix_missing_links()
 
         expected = points[:-1]
-        self.assertEqual(network.links[Point((1, 0))],
-                         set(expected))
+        self.assertEqual(network.links[Point((1, 0))], set(expected))

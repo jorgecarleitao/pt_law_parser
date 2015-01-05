@@ -147,8 +147,7 @@ class Table(LTComponent):
         # add possible missing corners
         for corner in ((self.x0, self.y0), (self.x0, self.y1), (self.x1, self.y1),
                        (self.x1, self.y0)):
-            network.add(Point(corner))
-
+            network.add_point(Point(corner))
         # add possible missing bottom and top borders
         for row in (self._rows_borders[0], self._rows_borders[-1]):
             points = sorted([point for point in network if point.y == row],

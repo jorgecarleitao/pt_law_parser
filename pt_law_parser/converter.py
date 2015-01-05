@@ -357,9 +357,9 @@ class LawConverter(PDFLayoutAnalyzer):
         for item in items:
             if isinstance(item, LTNetwork):
                 for point in item.points:
-                    _network.add(point)
+                    _network.add_point(point)
                     for link in item.links[point]:
-                        _network.add(link)
+                        _network.add_point(link)
                         _network.add_link(point, link)
 
         networks = _network.create_components()
@@ -401,7 +401,7 @@ class LawConverter(PDFLayoutAnalyzer):
             else:
                 layout.add_line(line, self.is_title)
 
-        # add the tables to respective columns
+        # add tables to respective columns
         for table in self._tables:
             if table.y0 <= last_page_limit:
                 continue  # ignores lines below the end
@@ -414,6 +414,7 @@ class LawConverter(PDFLayoutAnalyzer):
             layout.add(image)
 
         layout.analyze()
+        layout.assert_non_overlapping()
 
         return layout
 
@@ -506,7 +507,7 @@ class LawConverter(PDFLayoutAnalyzer):
             else:
                 raise IndexError
 
-            network.add(element)
+            network.add_point(element)
 
             # state 'l' is to draw a line, which means that we have link.
             # Otherwise, we only have the point.

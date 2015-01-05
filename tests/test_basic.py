@@ -477,6 +477,7 @@ class Test135502(TestDocument):
 
         self.assertEqual(19, len(self.device.titles))
 
+        self.assertEqual(4, len(self.device.tables))
         self.assertEqual(8, len(self.device.tables[0].cells))
         self.assertEqual(6, len(self.device.tables[1].cells))
         self.assertEqual(6, len(self.device.tables[2].cells))
@@ -514,12 +515,10 @@ class Test137616(TestDocument):
 class Test137630(TestDocument):
 
     @unittest.expectedFailure
-    # this page contains a right-centered text in bold that should not be
-    # interpreted as a title.
+    # Contains a right-aligned text on a centered column, which is incorrectly
+    # interpreted as a right-column centered text.
     def test_page_9(self):
         file_name = 'tests/samples/137630.pdf'
         self._run_test(file_name, [8])
-
-        self._print_result()
 
         self.assertEqual(11, len(self.device.titles))

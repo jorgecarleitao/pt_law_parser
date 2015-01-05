@@ -4,6 +4,7 @@ from math import ceil
 from pdfminer.layout import LTExpandableContainer, LTItem
 
 from pt_law_parser.point import Point
+from pt_law_parser.network import UndirectedNetwork
 
 
 class LTTextColumn(LTExpandableContainer):
@@ -44,6 +45,7 @@ class LTPageLayout(object):
 
     def get_center_column(self, item):
         columns = sorted(self.center, key=lambda c: c.y0, reverse=True)
+        left_columns = sorted(self.left, key=lambda c: c.y0, reverse=True)
 
         def new_column():
             c = LTTextColumn()
@@ -54,21 +56,28 @@ class LTPageLayout(object):
             return new_column()
 
         if item.y0 > columns[0].y0:
-            if self.left and item.y0 > self.left[-1].y0 > columns[0].y0:
+            if left_columns and item.y0 > left_columns[0].y0 > columns[0].y0:
                 # is above first but there is column in the middle
                 return new_column()
             else:
                 return columns[0]
         elif item.y0 < columns[-1].y0:
-            if self.left and item.y0 < self.left[-1].y0 < columns[-1].y0:
+            if left_columns and item.y0 < left_columns[-1].y0 < columns[-1].y0:
                 # is below last but there is column in the middle
                 return new_column()
             else:
                 return columns[-1]
 
-        # is in the middle of two columns, get the first one.
+        # below means that item is in the middle of columns.
+
         for column in columns:
-            if item.y0 < column:
+            # if overlapped with a column, return that one
+            if item.voverlap(column):
+                return column
+
+        for column in columns:
+            # if not, get the first one, extending it to below
+            if item.y0 < column.y0:
                 return column
 
         assert(False)
@@ -85,17 +94,23 @@ class LTPageLayout(object):
         else:
             column = self.get_center_column(item)
         column.add(item)
+        self.assert_non_overlapping()
 
     def add_line(self, line, is_title):
         if line.x0 < line.x1 < self.MIDDLE_X1:
-            if not self.left:
-                self.left.append(LTTextColumn())
-            column = self.left[-1]
+            # this can either be part of a centered column or a left column.
 
-            if self._previous_column and self._previous_column in self.center and \
-                    len(self.center[-1]):
-                if not is_title(line, column):
+            column = None
+            # if previous column is centered column
+            if self._previous_column and self._previous_column in self.center:
+                if not is_title(line, LTTextColumn()):
                     column = self.center[-1]
+
+            # standard left column
+            if column is None:
+                if not self.left:
+                    self.left.append(LTTextColumn())
+                column = self.left[-1]
 
         elif self.MIDDLE_X1 < line.x0 < line.x1:
             if not self.right:
@@ -106,6 +121,7 @@ class LTPageLayout(object):
 
         column.add(line)
         self._previous_column = column
+        self.assert_non_overlapping()
 
     def add_header(self, line):
         self.header.add(line)
@@ -143,8 +159,6 @@ class LTPageLayout(object):
         """
         if self.is_empty():
             return []
-
-        self.assert_non_overlapping()
 
         left = sorted(self.left, key=lambda c: c.y0, reverse=True)
         right = sorted(self.right, key=lambda c: c.y0, reverse=True)
@@ -191,89 +205,26 @@ class LTPageLayout(object):
                 result.append(c)
         return result
 
+    def print_as_rectangles(self):
+        for column in self.center + self.left + self.right:
+            print('{{%f,%f},{%f,%f}}' % column.bbox)
 
-class LTNetwork(LTItem):
-    def __init__(self):
-        super(LTNetwork, self).__init__()
-        self._points = set()
-        self._links = dict()
 
-    @property
-    def points(self):
-        return self._points
-
-    def __iter__(self):
-        return iter(self.points)
-
-    def __len__(self):
-        return len(self.points)
-
-    @property
-    def links(self):
-        return self._links
-
-    def add(self, point):
-        self.points.add(point)
-
-    def add_link(self, point, point_prime):
-        assert(point != point_prime)
-        assert(point in self and point_prime in self)
-        if point not in self.links:
-            self.links[point] = set()
-        self.links[point].add(point_prime)
-
-        if point_prime not in self.links:
-            self.links[point_prime] = set()
-        self.links[point_prime].add(point)
-
-    def remove_link(self, point, point_prime):
-        assert(point in self and point_prime in self)
-        assert(point_prime in self.links[point] and
-               point in self.links[point_prime])
-
-        self.links[point].remove(point_prime)
-        self.links[point_prime].remove(point)
-
-    def remove_point(self, point):
-        self.points.remove(point)
-        del self._links[point]
+class LTNetwork(LTItem, UndirectedNetwork):
 
     def replace(self, old_node, new_node):
         """
-        Replaces the node (e.g. move its position).
+        Replaces the old_node by the new_node (e.g. move its position).
         """
-        self.add(new_node)
-
-        if self.links[old_node] == {new_node}:
-            # two points that merge together without other link interfering.
-            self.links[new_node] = set()
-            self.remove_point(old_node)
-            return
+        assert(old_node in self.points)
+        assert(old_node != new_node)
+        self.add_point(new_node)
 
         for link in self.links[old_node]:
-            self.add_link(new_node, link)
-
-        for point in self._points:
-            if old_node in self.links[point]:
-                self.links[point].remove(old_node)
+            if link != new_node:
+                self.add_link(new_node, link)
 
         self.remove_point(old_node)
-
-    def links_list(self):
-        links = []
-        for point in self.links:
-            for link in self.links[point]:
-                if (link, point) not in links and (point, link) not in links:
-                    points = sorted((point, link), key=lambda p: (p.x, p.y))
-                    links.append(tuple(points))
-        return links
-
-    def print_links(self):
-        print('{%s}' % ','.join('{%s,%s}' % ('{%s}' % point, '{%s}' % link)
-                                for point, link in self.links_list()))
-
-    def print_nodes(self):
-        print('{%s}' % ','.join('{%s}' % point for point in self._points))
 
     def _remove_duplicates(self):
         """
@@ -297,7 +248,6 @@ class LTNetwork(LTItem):
             for link_prime in self.links[point_prime]:
                 self.links[point].add(link_prime)
                 self.links[link_prime].add(point)
-                self.links[link_prime].remove(point_prime)
 
             # track removed points
             removed_points.add(point_prime)
@@ -359,24 +309,17 @@ class LTNetwork(LTItem):
         """
         Removes nodes with only two links (are not important for table creation).
         """
-        points_to_remove = set()
-        for point in self:
+        for point in list(self)[:]:
             if len(self.links[point]) == 2:
                 point1 = list(self.links[point])[0]
                 point2 = list(self.links[point])[1]
                 assert(point1.x == point.x == point2.x or
                        point1.y == point.y == point2.y)
 
-                self.links[point1].remove(point)
                 self.links[point1].add(point2)
-
                 self.links[point2].add(point1)
-                self.links[point2].remove(point)
 
-                points_to_remove.add(point)
-
-        for point in points_to_remove:
-            self.remove_point(point)
+                self.remove_point(point)
 
     def _get_components(self):
         """
@@ -389,7 +332,7 @@ class LTNetwork(LTItem):
             Recursively adds a point and respective connected component to
             network.
             """
-            network.add(point)
+            network.add_point(point)
             for link in self.links[point]:
                 if link not in network:
                     add_point(network, link)
@@ -481,7 +424,7 @@ class LTNetwork(LTItem):
     def _fix_missing_links(self):
         """
         Computes all points that are crossed by a line without a link and
-        subdivides such line to link it with those points.
+        subdivides such line to link those points.
         """
         previous_number_of_points = len(self)
 
@@ -527,7 +470,7 @@ class LTNetwork(LTItem):
         self.remove_link(first_point, last_point)
 
         for point in points:
-            self.add(point)
+            self.add_point(point)
 
         if len(points) == 1:
             self.add_link(first_point, points[0])
